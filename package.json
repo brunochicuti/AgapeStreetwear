@@ -3,21 +3,27 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
+    "dev": "prisma generate && next dev",
+    "build": "prisma generate && prisma db push && next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "postinstall": "prisma skills sync || exit 0",
+    "contract:emit": "prisma contract emit"
   },
   "dependencies": {
     "@clerk/localizations": "^4.24.3",
     "@clerk/nextjs": "^7.9.22",
+    "@prisma/client": "^7.10.1",
+    "@prisma/orm-postgres": "^8.0.0-rc.21",
     "@tailwindcss/postcss": "^4.3.3",
     "clsx": "^2.1.1",
+    "dotenv": "^18.0.9",
     "next": "16.4.3",
     "react": "19.3.0",
     "react-dom": "19.3.0"
   },
   "devDependencies": {
+    "@prisma/cli-engine": "^0.9.0",
     "@tailwindcss/turbopack": "^4",
     "@types/node": "^20",
     "@types/react": "^19",
@@ -26,6 +32,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.4.3",
     "postcss": "^8.5.32",
+    "prisma": "^8.0.0-rc.28",
     "tailwindcss": "^4.3.3",
     "typescript": "^5"
   }
