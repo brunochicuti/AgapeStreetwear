@@ -1,7 +1,7 @@
 import { ProductType } from "@/types/ProducType"
 import ProductImage from './ProductImage';
 import { Space_Grotesk } from "next/font/google";
-import {formatPrice} from "@/lib/utils";  
+import {formatPrice} from "@/src/lib/utils";  
 
 const spaceGrotesk = Space_Grotesk({
   subsets: ["latin"],

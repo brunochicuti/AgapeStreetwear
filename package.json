@@ -22,7 +22,8 @@
     "react": "19.3.0",
     "react-dom": "19.3.0",
     "stripe": "^23.0.1",
-    "svix": "^2.9.1"
+    "svix": "^2.9.1",
+    "zustand": "^5.0.16"
   },
   "devDependencies": {
     "@tailwindcss/turbopack": "^4",
