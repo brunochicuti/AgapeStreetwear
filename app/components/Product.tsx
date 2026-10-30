@@ -1,6 +1,7 @@
 import { ProductType } from "@/types/ProducType"
 import ProductImage from './ProductImage';
 import { Space_Grotesk } from "next/font/google";
+import {formatPrice} from "@/lib/utils";  
 
 const spaceGrotesk = Space_Grotesk({
   subsets: ["latin"],
@@ -17,10 +18,10 @@ export default function Product({product}: ProductProps){
             </div>
             <div className="flex justify-between font-bold my-3">
                 <h2 className="text-[17px] font-semibold leading-6 text-white ">
-                {product.title}
+                {product.name}
                 </h2>
                 <p className="text-[20px] font-bold text-white">
-                    {product.price}
+                    {formatPrice(product.price)}
                 </p>
                 </div>
             <button className={`${spaceGrotesk.className} rounded-md bg-white text-black p-3.5 py-2.5 text-center font-bold uppercase tracking-[0.1em]`}>Adicionar à sacola</button>
