@@ -1,6 +1,6 @@
 import { ProductType } from "@/src/types/ProductType";
 import { auth } from "@clerk/nextjs/server";
-import { prisma } from "@/src/lib/prisma";
+import prisma from "@/src/lib/prisma";
 import { stripe } from "@/src/lib/stripe";
 
 const calculateOrderAmount = (items: ProductType[]) => {
