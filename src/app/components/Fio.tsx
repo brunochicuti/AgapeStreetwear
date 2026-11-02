@@ -2,7 +2,7 @@
 "use client";
 
 import { useState } from "react";
-import type { ProductType } from "@/types/ProducType";
+import type { ProductType } from "@/types/ProductType";
 import { useCartStore } from "@/src/store";
 
 type FioProps = {

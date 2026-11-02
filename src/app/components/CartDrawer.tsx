@@ -1,9 +1,7 @@
 
 "use client";
 
-import { useState } from "react";
 import Image from "next/image";
-import Link from "next/link";
 import {
   X,
   ShoppingBag,
@@ -16,16 +14,18 @@ import {
 } from "lucide-react";
 import { useCartStore } from "@/src/store";
 import { formatPrice } from "@/src/lib/utils";
+import CheckoutButton from "./CheckoutButton";
 
 export default function CartDrawer() {
   const useStore = useCartStore();
-  const [finalizando, setFinalizando] = useState(false);
 
   const cart = useStore.cart;
+
   const quantidadeTotal = cart.reduce(
     (total, item) => total + item.quantity,
     0
   );
+
   const subtotal = cart.reduce(
     (total, item) => total + item.price * item.quantity,
     0
@@ -60,7 +60,9 @@ export default function CartDrawer() {
               </h2>
               <p className="mt-0.5 text-xs text-[#858077]">
                 {quantidadeTotal}{" "}
-                {quantidadeTotal === 1 ? "item selecionado" : "itens selecionados"}
+                {quantidadeTotal === 1
+                  ? "item selecionado"
+                  : "itens selecionados"}
               </p>
             </div>
           </div>
@@ -207,7 +209,9 @@ export default function CartDrawer() {
             <div className="space-y-3">
               <div className="flex items-center justify-between text-sm">
                 <span className="text-[#777168]">Subtotal</span>
-                <span className="font-medium">{formatPrice(subtotal)}</span>
+                <span className="font-medium">
+                  {formatPrice(subtotal)}
+                </span>
               </div>
 
               <div className="flex items-center justify-between text-sm">
@@ -220,23 +224,16 @@ export default function CartDrawer() {
               <div className="my-1 border-t border-dashed border-[#e2ded6]" />
 
               <div className="flex items-center justify-between gap-3">
-                <span className="text-base font-semibold">Total parcial</span>
+                <span className="text-base font-semibold">
+                  Total parcial
+                </span>
                 <span className="text-xl font-semibold tracking-tight">
                   {formatPrice(subtotal)}
                 </span>
               </div>
             </div>
 
-            <Link
-              href="/checkout"
-              onClick={() => setFinalizando(true)}
-              className={`mt-5 flex min-h-14 w-full items-center justify-center gap-3 rounded-full bg-[#24231f] px-6 py-4 text-sm font-medium text-white transition hover:bg-[#45423c] ${
-                finalizando ? "pointer-events-none opacity-70" : ""
-              }`}
-            >
-              {finalizando ? "Abrindo checkout..." : "Finalizar compra"}
-              <ArrowRight size={17} />
-            </Link>
+            <CheckoutButton totalPrice={subtotal} />
 
             <p className="mt-3 text-center text-[11px] leading-5 text-[#928b81]">
               Os valores de entrega serão apresentados na finalização.
