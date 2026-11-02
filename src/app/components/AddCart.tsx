@@ -1,7 +1,7 @@
 "use client";
 import { Space_Grotesk } from "next/font/google";
 import { useCartStore } from "@/src/store";
-import { ProductType } from "@/types/ProductType";
+import { ProductType } from "@/src/types/ProductType";
 
 const spaceGrotesk  = Space_Grotesk({
   subsets: ["latin"],

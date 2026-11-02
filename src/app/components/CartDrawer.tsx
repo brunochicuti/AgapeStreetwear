@@ -21,15 +21,15 @@ export default function CartDrawer() {
 
   const cart = useStore.cart;
 
-  const quantidadeTotal = cart.reduce(
-    (total, item) => total + item.quantity,
-    0
-  );
+const quantidadeTotal = cart.reduce(
+  (total, item) => total + (item.quantity ?? 1),
+  0
+);
 
-  const subtotal = cart.reduce(
-    (total, item) => total + item.price * item.quantity,
-    0
-  );
+const subtotal = cart.reduce(
+  (total, item) => total + (item.price ?? 0) * (item.quantity ?? 1),
+  0
+)
 
   const fecharCarrinho = () => {
     useStore.toggleCart();
@@ -154,11 +154,13 @@ export default function CartDrawer() {
                       </div>
 
                       <p className="mt-2 text-sm font-semibold">
-                        {formatPrice(item.price * item.quantity)}
+                        {formatPrice((item.price ?? 0) * (item.quantity ?? 1))}
                       </p>
 
                       <p className="mt-1 text-xs text-[#858077]">
-                        {formatPrice(item.price)} por unidade
+                        {item.price !== null
+                        ? `${formatPrice(item.price)} por unidade`
+                        : "Preço indisponível"}
                       </p>
 
                       <div className="mt-auto flex items-end justify-between gap-2 pt-3">
@@ -173,7 +175,7 @@ export default function CartDrawer() {
                           </button>
 
                           <span className="min-w-7 text-center text-sm tabular-nums">
-                            {item.quantity}
+                            {item.quantity ?? 1}
                           </span>
 
                           <button

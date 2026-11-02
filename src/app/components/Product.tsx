@@ -1,4 +1,4 @@
-import { ProductType } from "@/types/ProductType"
+import { ProductType } from "@/src/types/ProductType";
 import ProductImage from './ProductImage';
 import {formatPrice} from "@/src/lib/utils";  
 import AddCart from "./AddCart"

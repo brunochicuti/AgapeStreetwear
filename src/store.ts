@@ -1,7 +1,6 @@
 import {create} from "zustand";
 import {persist} from "zustand/middleware";
-import { ProductType } from "@/types/ProductType";
-import Product from "./app/loading";
+import { ProductType } from "@/src/types/ProductType";
 
 type CartState = {
     cart: ProductType[];

@@ -1,7 +1,7 @@
 'use client'
 import {useState} from "react";
 import Image from 'next/image';
-import { ProductType } from "@/types/ProductType";
+import { ProductType } from "@/src/types/ProductType";
 
 
 type ProductImageProps = {

@@ -2,14 +2,16 @@
 "use client";
 
 import { useState } from "react";
-import type { ProductType } from "@/types/ProductType";
+import { ProductType } from "@/src/types/ProductType";
 import { useCartStore } from "@/src/store";
 
 type FioProps = {
   products: ProductType[];
 };
 
-function formatarPreco(preco: number, moeda = "brl") {
+function formatarPreco(preco: number | null, moeda = "brl") {
+  if (preco === null) return "Preço indisponível";
+
   return new Intl.NumberFormat("pt-BR", {
     style: "currency",
     currency: moeda.toUpperCase(),
