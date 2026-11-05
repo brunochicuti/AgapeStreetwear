@@ -1,13 +1,71 @@
+
 "use client";
 
 import { loadStripe, StripeElementsOptions } from "@stripe/stripe-js";
-import { Elements, PaymentElement } from "@stripe/react-stripe-js";
+import {
+  Elements,
+  PaymentElement,
+  useStripe,
+  useElements,
+} from "@stripe/react-stripe-js";
 import { useCartStore } from "@/src/store";
-import { useEffect, useState } from "react";
+import { useEffect, useState, FormEvent } from "react";
 
 const stripePromise = loadStripe(
   process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!
 );
+
+function FormularioPagamento() {
+  const stripe = useStripe();
+  const elements = useElements();
+
+  const [carregando, setCarregando] = useState(false);
+  const [erro, setErro] = useState("");
+
+  async function finalizarPagamento(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    if (!stripe || !elements) return;
+
+    setCarregando(true);
+    setErro("");
+
+    const { error } = await stripe.confirmPayment({
+      elements,
+      confirmParams: {
+        return_url: `${window.location.origin}/pedido-confirmado`,
+      },
+    });
+
+    if (error) {
+      setErro(error.message || "Não foi possível concluir o pagamento.");
+      setCarregando(false);
+    }
+  }
+
+  return (
+    <form onSubmit={finalizarPagamento} className="space-y-6">
+      <PaymentElement
+        id="payment-element"
+        options={{ layout: "tabs" }}
+      />
+
+      {erro && (
+        <p className="text-red-500" role="alert">
+          {erro}
+        </p>
+      )}
+
+      <button
+        type="submit"
+        disabled={!stripe || !elements || carregando}
+        className="w-full rounded-lg bg-black px-6 py-4 text-white font-semibold disabled:opacity-50"
+      >
+        {carregando ? "Processando..." : "Finalizar pagamento"}
+      </button>
+    </form>
+  );
+}
 
 export default function Checkout() {
   const cart = useCartStore((state) => state.cart);
@@ -46,11 +104,13 @@ export default function Checkout() {
         const data = await response.json();
 
         if (!response.ok) {
-          throw new Error(data.error || data.message || "Não foi possível iniciar o pagamento.");
+          throw new Error(
+            data.error || data.message || "Não foi possível iniciar o pagamento."
+          );
         }
 
         if (!data.paymentIntent?.client_secret) {
-          throw new Error("O Stripe não retornou os dados do pagamento.");
+          throw new Error("A Stripe não retornou os dados do pagamento.");
         }
 
         if (ativo) {
@@ -102,10 +162,7 @@ export default function Checkout() {
     <div>
       {clientSecret && (
         <Elements options={options} stripe={stripePromise}>
-          <PaymentElement
-            id="payment-element"
-            options={{ layout: "tabs" }}
-          />
+          <FormularioPagamento />
         </Elements>
       )}
     </div>
