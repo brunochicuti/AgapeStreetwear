@@ -4,7 +4,9 @@
     import { useCartStore } from "@/src/store";
     import { useEffect, useState } from "react"
 
-    const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHBLE_KEY!)
+    const stripePromise = loadStripe(
+    process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!
+    );
 
     export default function checkout() {
         const cartStore = useCartStore();
