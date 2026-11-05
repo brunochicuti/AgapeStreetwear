@@ -107,11 +107,11 @@ export default function Checkout() {
 
   const moeda = cart[0]?.currency || "BRL";
 
-  const subtotal = cart.reduce(
-    (total, produto) =>
-      total + (produto.price ?? 0) * (produto.quantity ?? 1),
-    0
-  );
+const subtotal = cart.reduce(
+  (total, produto) =>
+    total + ((produto.price ?? 0) / 100) * (produto.quantity ?? 1),
+  0
+);
 
   // Fecha o carrinho automaticamente ao abrir o checkout.
   useEffect(() => {
@@ -288,8 +288,8 @@ export default function Checkout() {
 
                   <p className="whitespace-nowrap text-sm font-semibold">
                     {formatarPreco(
-                      (produto.price ?? 0) * (produto.quantity ?? 1),
-                      produto.currency || moeda
+                    ((produto.price ?? 0) / 100) * (produto.quantity ?? 1),
+                    produto.currency || moeda
                     )}
                   </p>
                 </div>
