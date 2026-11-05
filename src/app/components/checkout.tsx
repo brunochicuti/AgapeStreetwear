@@ -115,9 +115,9 @@ export default function Checkout() {
         }
 
         if (ativo) {
-          if (!paymentIntent) {
+            if (paymentIntent !== data.paymentIntent.id) {
             setPaymentIntent(data.paymentIntent.id);
-          }
+            }
 
           setClientSecret(data.paymentIntent.client_secret);
         }

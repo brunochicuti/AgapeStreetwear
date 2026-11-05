@@ -1,3 +1,4 @@
+
 import { ProductType } from "@/src/types/ProductType";
 import { auth } from "@clerk/nextjs/server";
 import prisma from "@/src/lib/prisma";
@@ -9,12 +10,16 @@ const calculateOrderAmount = (items: ProductType[]) => {
   }, 0);
 };
 
+function erroJson(error: string, status: number) {
+  return Response.json({ error }, { status });
+}
+
 export async function POST(req: Request) {
   try {
     const { userId } = await auth();
 
     if (!userId) {
-      return new Response("Unauthorized", { status: 401 });
+      return erroJson("Não autenticado.", 401);
     }
 
     const { items, payment_intent_id } = await req.json();
@@ -30,7 +35,7 @@ export async function POST(req: Request) {
           item.quantity! <= 0
       )
     ) {
-      return new Response("Invalid items", { status: 400 });
+      return erroJson("Itens inválidos.", 400);
     }
 
     const total = calculateOrderAmount(items);
@@ -40,7 +45,7 @@ export async function POST(req: Request) {
     });
 
     if (!user) {
-      return new Response("User not found", { status: 404 });
+      return erroJson("Usuário não encontrado.", 404);
     }
 
     const productData = items.map((item: ProductType) => ({
@@ -60,36 +65,41 @@ export async function POST(req: Request) {
       });
 
       if (!existingOrder) {
-        return new Response("Order not found", { status: 404 });
+        return erroJson("Pedido não encontrado.", 404);
       }
 
       const currentIntent =
         await stripe.paymentIntents.retrieve(payment_intent_id);
 
-      if (
-        currentIntent.status !== "requires_payment_method" &&
-        currentIntent.status !== "requires_confirmation"
-      ) {
-        return new Response("Payment cannot be updated", { status: 400 });
+      if (currentIntent.status === "requires_payment_method") {
+        const updatedIntent = await stripe.paymentIntents.update(
+          payment_intent_id,
+          { amount: total }
+        );
+
+        await prisma.order.update({
+          where: { id: existingOrder.id },
+          data: {
+            amount: total / 100,
+            products: {
+              deleteMany: {},
+              create: productData,
+            },
+          },
+        });
+
+        return Response.json({ paymentIntent: updatedIntent });
       }
 
-      const updatedIntent = await stripe.paymentIntents.update(
-        payment_intent_id,
-        { amount: total }
-      );
-
-      await prisma.order.update({
-        where: { id: existingOrder.id },
-        data: {
-          amount: total / 100,
-          products: {
-            deleteMany: {},
-            create: productData,
-          },
-        },
-      });
-
-      return Response.json({ paymentIntent: updatedIntent });
+      if (
+        currentIntent.status !== "succeeded" &&
+        currentIntent.status !== "canceled"
+      ) {
+        return erroJson(
+          "O pagamento anterior ainda está em processamento. Aguarde antes de tentar novamente.",
+          409
+        );
+      }
     }
 
     const paymentIntent = await stripe.paymentIntents.create({
@@ -118,6 +128,7 @@ export async function POST(req: Request) {
     return Response.json({ paymentIntent });
   } catch (error) {
     console.error("Erro no checkout:", error);
-    return new Response("Internal Server Error", { status: 500 });
+
+    return erroJson("Não foi possível iniciar o pagamento.", 500);
   }
 }
