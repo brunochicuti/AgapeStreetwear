@@ -262,7 +262,7 @@ export default function Fio({ products }: FioProps) {
           </header>
 
           {/* Palco 3D para telas maiores */}
-          <div className="fio-palco relative mx-auto hidden h-[590px] w-full max-w-[1500px] overflow-hidden md:block lg:h-[680px]">
+          <div className="fio-palco relative mx-auto hidden h-[590px] w-full max-w-[1500px] overflow-hidden lg:block lg:h-[680px]">
             {/* Sombra suave no chão */}
             <div className="pointer-events-none absolute inset-x-[18%] bottom-[35px] h-12 rounded-[50%] bg-[#777064]/10 blur-3xl" />
 
@@ -406,7 +406,7 @@ export default function Fio({ products }: FioProps) {
           </div>
 
           {/* Versão para celular */}
-          <div className="relative px-4 pb-10 pt-5 md:hidden">
+          <div className="relative px-4 pb-10 pt-5 lg:hidden">
             <div className="relative mx-auto flex min-h-[420px] max-w-[410px] flex-col items-center justify-center">
               <svg
                 className="pointer-events-none absolute left-0 top-0 z-10 h-[90px] w-full"
@@ -499,7 +499,7 @@ export default function Fio({ products }: FioProps) {
           </div>
 
           {/* Ação para a peça central no desktop */}
-          <div className="relative z-40 hidden justify-center pb-12 md:flex">
+          <div className="relative z-40 hidden justify-center pb-12 lg:flex">
             <button
               type="button"
               onClick={() => setProdutoAberto(produtoCentral)}
