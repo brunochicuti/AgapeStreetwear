@@ -1,4 +1,4 @@
-'use client'
+"use client";
     import { loadStripe, StripeElementsOptions } from "@stripe/stripe-js";
     import {Elements, PaymentElement} from "@stripe/react-stripe-js"
     import { useCartStore } from "@/src/store";
