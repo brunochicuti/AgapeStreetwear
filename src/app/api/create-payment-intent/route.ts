@@ -4,11 +4,9 @@ import prisma from "@/src/lib/prisma";
 import { stripe } from "@/src/lib/stripe";
 
 const calculateOrderAmount = (items: ProductType[]) => {
-  return Math.round(
-    items.reduce((total, item) => {
-      return total + item.price! * item.quantity!;
-    }, 0) * 100
-  );
+  return items.reduce((total, item) => {
+    return total + item.price! * item.quantity!;
+  }, 0);
 };
 
 export async function POST(req: Request) {
