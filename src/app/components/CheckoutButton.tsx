@@ -29,7 +29,7 @@ export default function CheckoutButton({ totalPrice }: CheckoutButtonProps) {
 
     setCheckout("checkout");
     setFinalizando(true);
-    router.push("/");
+    router.push("/checkout");
   };
 
   return (
