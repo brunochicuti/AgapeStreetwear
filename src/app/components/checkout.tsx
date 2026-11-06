@@ -12,9 +12,38 @@ import { useCartStore } from "@/src/store";
 import { useEffect, useState, FormEvent } from "react";
 
 const stripePromise = loadStripe(
-  process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY_TEST ||
   process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY_LIVE!
 );
+
+const FRETE = 5;
+
+type DadosComprador = {
+  fullName: string;
+  cpf: string;
+  email: string;
+  phone: string;
+  zipCode: string;
+  street: string;
+  number: string;
+  complement: string;
+  neighborhood: string;
+  city: string;
+  state: string;
+};
+
+const dadosIniciais: DadosComprador = {
+  fullName: "",
+  cpf: "",
+  email: "",
+  phone: "",
+  zipCode: "",
+  street: "",
+  number: "",
+  complement: "",
+  neighborhood: "",
+  city: "",
+  state: "",
+};
 
 function formatarPreco(valor: number, moeda = "BRL") {
   return new Intl.NumberFormat("pt-BR", {
@@ -23,7 +52,50 @@ function formatarPreco(valor: number, moeda = "BRL") {
   }).format(valor);
 }
 
-function FormularioPagamento() {
+function Campo({
+  label,
+  name,
+  value,
+  onChange,
+  required = true,
+  placeholder,
+  type = "text",
+  maxLength,
+}: {
+  label: string;
+  name: keyof DadosComprador;
+  value: string;
+  onChange: (name: keyof DadosComprador, value: string) => void;
+  required?: boolean;
+  placeholder?: string;
+  type?: string;
+  maxLength?: number;
+}) {
+  return (
+    <label className="block">
+      <span className="mb-2 block text-xs font-bold uppercase tracking-wider text-gray-600">
+        {label} {required && <span className="text-red-500">*</span>}
+      </span>
+
+      <input
+        type={type}
+        name={name}
+        value={value}
+        onChange={(event) => onChange(name, event.target.value)}
+        placeholder={placeholder}
+        required={required}
+        maxLength={maxLength}
+        className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm text-black outline-none transition placeholder:text-gray-400 focus:border-black"
+      />
+    </label>
+  );
+}
+
+function FormularioPagamento({
+  paymentIntentId,
+}: {
+  paymentIntentId: string;
+}) {
   const stripe = useStripe();
   const elements = useElements();
 
@@ -33,20 +105,39 @@ function FormularioPagamento() {
   async function finalizarPagamento(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    if (!stripe || !elements) return;
+    if (!stripe || !elements || carregando) return;
 
     setCarregando(true);
     setErro("");
 
-    const { error } = await stripe.confirmPayment({
-      elements,
-      confirmParams: {
-        return_url: `${window.location.origin}/pedido-confirmado`,
-      },
-    });
+    try {
+      const { error, paymentIntent } = await stripe.confirmPayment({
+        elements,
+        confirmParams: {
+          return_url: `${window.location.origin}/pedido-confirmado?payment_intent_id=${encodeURIComponent(paymentIntentId)}`,
+        },
+        redirect: "if_required",
+      });
 
-    if (error) {
-      setErro(error.message || "Não foi possível concluir o pagamento.");
+      if (error) {
+        setErro(error.message || "Não foi possível concluir o pagamento.");
+        setCarregando(false);
+        return;
+      }
+
+      if (
+        paymentIntent?.status === "succeeded" ||
+        paymentIntent?.status === "processing"
+      ) {
+        window.location.href =
+          `/pedido-confirmado?payment_intent_id=${encodeURIComponent(paymentIntent.id)}`;
+        return;
+      }
+
+      setErro("O pagamento ainda não foi confirmado. Verifique os dados.");
+      setCarregando(false);
+    } catch {
+      setErro("Ocorreu um erro ao processar o pagamento.");
       setCarregando(false);
     }
   }
@@ -54,7 +145,7 @@ function FormularioPagamento() {
   return (
     <form onSubmit={finalizarPagamento} className="space-y-6">
       <div>
-        <h2 className="text-lg font-bold text-black">
+        <h2 className="text-lg font-bold uppercase text-black">
           Forma de pagamento
         </h2>
         <p className="mt-1 text-sm text-gray-500">
@@ -63,10 +154,7 @@ function FormularioPagamento() {
       </div>
 
       <div className="rounded-xl border border-gray-200 p-4">
-        <PaymentElement
-          id="payment-element"
-          options={{ layout: "tabs" }}
-        />
+        <PaymentElement options={{ layout: "tabs" }} />
       </div>
 
       {erro && (
@@ -101,92 +189,153 @@ export default function Checkout() {
   const isOpen = useCartStore((state) => state.isOpen);
   const toggleCart = useCartStore((state) => state.toggleCart);
 
+  const [comprador, setComprador] =
+    useState<DadosComprador>(dadosIniciais);
+
   const [clientSecret, setClientSecret] = useState("");
+  const [checkoutKey, setCheckoutKey] = useState("");
   const [erro, setErro] = useState("");
-  const [carregando, setCarregando] = useState(true);
+  const [carregando, setCarregando] = useState(false);
+  const [consultandoCep, setConsultandoCep] = useState(false);
+  const [etapa, setEtapa] = useState<"dados" | "pagamento">("dados");
 
-  const moeda = cart[0]?.currency || "BRL";
+  const moeda = "BRL";
 
-const subtotal = cart.reduce(
-  (total, produto) =>
-    total + ((produto.price ?? 0) / 100) * (produto.quantity ?? 1),
-  0
-);
+  const subtotal = cart.reduce(
+    (total, produto) =>
+      total + ((produto.price ?? 0) / 100) * (produto.quantity ?? 1),
+    0
+  );
 
-  // Fecha o carrinho automaticamente ao abrir o checkout.
+  const total = subtotal + FRETE;
+
   useEffect(() => {
     if (isOpen) {
       toggleCart();
     }
   }, [isOpen, toggleCart]);
 
-  useEffect(() => {
+  function atualizarCampo(
+    name: keyof DadosComprador,
+    value: string
+  ) {
+    setComprador((anterior) => ({
+      ...anterior,
+      [name]: value,
+    }));
+  }
+
+  async function consultarCep() {
+    const cep = comprador.zipCode.replace(/\D/g, "");
+
+    if (cep.length !== 8) return;
+
+    setConsultandoCep(true);
+    setErro("");
+
+    try {
+      const response = await fetch(
+        `https://viacep.com.br/ws/${cep}/json/`
+      );
+
+      if (!response.ok) {
+        throw new Error("Não foi possível consultar o CEP.");
+      }
+
+      const data = await response.json();
+
+      if (data.erro) {
+        throw new Error("CEP não encontrado.");
+      }
+
+      setComprador((anterior) => ({
+        ...anterior,
+        street: data.logradouro || anterior.street,
+        neighborhood: data.bairro || anterior.neighborhood,
+        city: data.localidade || anterior.city,
+        state: data.uf || anterior.state,
+      }));
+    } catch (error) {
+      setErro(
+        error instanceof Error
+          ? error.message
+          : "Erro ao consultar o CEP."
+      );
+    } finally {
+      setConsultandoCep(false);
+    }
+  }
+
+  async function continuarParaPagamento(
+    event: FormEvent<HTMLFormElement>
+  ) {
+    event.preventDefault();
+
+    if (carregando) return;
+
     if (cart.length === 0) {
-      setCarregando(false);
       setErro("Seu carrinho está vazio.");
       return;
     }
 
-    let ativo = true;
+    setCarregando(true);
+    setErro("");
 
-    async function criarPagamento() {
-      try {
-        setCarregando(true);
-        setErro("");
+    try {
+      const chaveAtual = checkoutKey || crypto.randomUUID();
 
-        const response = await fetch("/api/create-payment-intent", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            items: cart,
-            payment_intent_id: paymentIntent || undefined,
-          }),
-        });
-
-        const data = await response.json();
-
-        if (!response.ok) {
-          throw new Error(
-            data.error ||
-              data.message ||
-              "Não foi possível iniciar o pagamento."
-          );
-        }
-
-        if (!data.paymentIntent?.client_secret) {
-          throw new Error("A Stripe não retornou os dados do pagamento.");
-        }
-
-        if (ativo) {
-          if (paymentIntent !== data.paymentIntent.id) {
-            setPaymentIntent(data.paymentIntent.id);
-          }
-
-          setClientSecret(data.paymentIntent.client_secret);
-        }
-      } catch (error) {
-        if (ativo) {
-          setErro(
-            error instanceof Error
-              ? error.message
-              : "Erro ao carregar o pagamento."
-          );
-        }
-      } finally {
-        if (ativo) {
-          setCarregando(false);
-        }
+      if (!checkoutKey) {
+        setCheckoutKey(chaveAtual);
       }
+
+      const response = await fetch("/api/create-payment-intent", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          checkoutKey: chaveAtual,
+          items: cart.map((produto) => ({
+            id: produto.id,
+            quantity: produto.quantity ?? 1,
+          })),
+          comprador,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          data.error || "Não foi possível iniciar o pagamento."
+        );
+      }
+
+      if (!data.paymentIntent?.client_secret || !data.paymentIntent?.id) {
+        throw new Error("A Stripe não retornou os dados do pagamento.");
+      }
+
+      setPaymentIntent(data.paymentIntent.id);
+      setClientSecret(data.paymentIntent.client_secret);
+      setEtapa("pagamento");
+    } catch (error) {
+      setErro(
+        error instanceof Error
+          ? error.message
+          : "Erro ao preparar o pagamento."
+      );
+    } finally {
+      setCarregando(false);
     }
+  }
 
-    criarPagamento();
-
-    return () => {
-      ativo = false;
-    };
-  }, [cart, paymentIntent, setPaymentIntent]);
+  function editarDados() {
+    setClientSecret("");
+    setCheckoutKey("");
+    setPaymentIntent("");
+    setErro("");
+    setEtapa("dados");
+  }
 
   const options: StripeElementsOptions = {
     clientSecret,
@@ -201,25 +350,15 @@ const subtotal = cart.reduce(
     },
   };
 
-  if (carregando) {
-    return (
-      <div className="flex min-h-[60vh] items-center justify-center bg-white">
-        <p className="text-sm font-semibold uppercase tracking-widest text-gray-500">
-          Preparando seu pagamento...
-        </p>
-      </div>
-    );
-  }
-
-  if (erro) {
+  if (cart.length === 0) {
     return (
       <div className="flex min-h-[60vh] flex-col items-center justify-center bg-white px-6 text-center">
         <h1 className="text-2xl font-black uppercase text-black">
-          Não foi possível continuar
+          Carrinho vazio
         </h1>
-
-        <p className="mt-3 text-gray-500">{erro}</p>
-
+        <p className="mt-3 text-gray-500">
+          Adicione produtos antes de finalizar seu pedido.
+        </p>
         <a
           href="/"
           className="mt-6 rounded-lg bg-black px-6 py-3 text-sm font-bold uppercase text-white"
@@ -243,16 +382,200 @@ const subtotal = cart.reduce(
           </h1>
 
           <p className="mt-2 text-sm text-gray-500">
-            Revise seu pedido e conclua seu pagamento.
+            Revise seu pedido e informe os dados para entrega.
           </p>
         </div>
 
         <div className="grid grid-cols-1 gap-10 lg:grid-cols-[1.2fr_0.8fr] lg:gap-16">
           <section className="order-2 lg:order-1">
-            {clientSecret && (
-              <Elements options={options} stripe={stripePromise}>
-                <FormularioPagamento />
-              </Elements>
+            {etapa === "dados" ? (
+              <form
+                onSubmit={continuarParaPagamento}
+                className="space-y-9"
+              >
+                <div>
+                  <h2 className="mb-5 text-lg font-black uppercase">
+                    01. Dados pessoais
+                  </h2>
+
+                  <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+                    <div className="sm:col-span-2">
+                      <Campo
+                        label="Nome completo"
+                        name="fullName"
+                        value={comprador.fullName}
+                        onChange={atualizarCampo}
+                        placeholder="Seu nome completo"
+                      />
+                    </div>
+
+                    <Campo
+                      label="CPF"
+                      name="cpf"
+                      value={comprador.cpf}
+                      onChange={atualizarCampo}
+                      placeholder="Somente números"
+                      maxLength={14}
+                    />
+
+                    <Campo
+                      label="Telefone"
+                      name="phone"
+                      value={comprador.phone}
+                      onChange={atualizarCampo}
+                      placeholder="(00) 00000-0000"
+                      maxLength={15}
+                    />
+
+                    <div className="sm:col-span-2">
+                      <Campo
+                        label="E-mail"
+                        name="email"
+                        value={comprador.email}
+                        onChange={atualizarCampo}
+                        placeholder="seuemail@exemplo.com"
+                        type="email"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="border-t border-gray-200 pt-8">
+                  <h2 className="mb-5 text-lg font-black uppercase">
+                    02. Endereço de entrega
+                  </h2>
+
+                  <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+                    <div>
+                      <Campo
+                        label="CEP"
+                        name="zipCode"
+                        value={comprador.zipCode}
+                        onChange={atualizarCampo}
+                        placeholder="00000-000"
+                        maxLength={9}
+                      />
+
+                      <button
+                        type="button"
+                        onClick={consultarCep}
+                        disabled={consultandoCep}
+                        className="mt-2 text-xs font-bold uppercase text-gray-500 underline underline-offset-4 disabled:opacity-50"
+                      >
+                        {consultandoCep
+                          ? "Consultando..."
+                          : "Buscar endereço pelo CEP"}
+                      </button>
+                    </div>
+
+                    <Campo
+                      label="Estado (UF)"
+                      name="state"
+                      value={comprador.state}
+                      onChange={atualizarCampo}
+                      placeholder="MS"
+                      maxLength={2}
+                    />
+
+                    <div className="sm:col-span-2">
+                      <Campo
+                        label="Rua"
+                        name="street"
+                        value={comprador.street}
+                        onChange={atualizarCampo}
+                        placeholder="Nome da rua ou avenida"
+                      />
+                    </div>
+
+                    <Campo
+                      label="Número"
+                      name="number"
+                      value={comprador.number}
+                      onChange={atualizarCampo}
+                      placeholder="Número"
+                    />
+
+                    <Campo
+                      label="Complemento"
+                      name="complement"
+                      value={comprador.complement}
+                      onChange={atualizarCampo}
+                      placeholder="Apartamento, bloco..."
+                      required={false}
+                    />
+
+                    <Campo
+                      label="Bairro"
+                      name="neighborhood"
+                      value={comprador.neighborhood}
+                      onChange={atualizarCampo}
+                      placeholder="Seu bairro"
+                    />
+
+                    <Campo
+                      label="Cidade"
+                      name="city"
+                      value={comprador.city}
+                      onChange={atualizarCampo}
+                      placeholder="Sua cidade"
+                    />
+                  </div>
+                </div>
+
+                {erro && (
+                  <p
+                    className="rounded-lg bg-red-50 p-3 text-sm text-red-600"
+                    role="alert"
+                  >
+                    {erro}
+                  </p>
+                )}
+
+                <button
+                  type="submit"
+                  disabled={carregando || consultandoCep}
+                  className="w-full rounded-lg bg-black px-6 py-4 text-sm font-bold uppercase tracking-wider text-white transition hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {carregando
+                    ? "Preparando pagamento..."
+                    : "Continuar para pagamento"}
+                </button>
+
+                <p className="text-center text-xs text-gray-400">
+                  Os dados informados serão utilizados para processar e entregar seu pedido.
+                </p>
+              </form>
+            ) : (
+              <div className="space-y-6">
+                <div className="flex items-center justify-between border-b border-gray-200 pb-5">
+                  <div>
+                    <h2 className="text-lg font-black uppercase">
+                      03. Pagamento
+                    </h2>
+                    <p className="mt-1 text-sm text-gray-500">
+                      Informe a forma de pagamento.
+                    </p>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={editarDados}
+                    className="text-xs font-bold uppercase underline underline-offset-4"
+                  >
+                    Editar dados
+                  </button>
+                </div>
+
+                {clientSecret && paymentIntent && (
+                  <Elements
+                    key={clientSecret}
+                    options={options}
+                    stripe={stripePromise}
+                  >
+                    <FormularioPagamento paymentIntentId={paymentIntent} />
+                  </Elements>
+                )}
+              </div>
             )}
           </section>
 
@@ -288,8 +611,9 @@ const subtotal = cart.reduce(
 
                   <p className="whitespace-nowrap text-sm font-semibold">
                     {formatarPreco(
-                    ((produto.price ?? 0) / 100) * (produto.quantity ?? 1),
-                    produto.currency || moeda
+                      ((produto.price ?? 0) / 100) *
+                        (produto.quantity ?? 1),
+                      produto.currency || moeda
                     )}
                   </p>
                 </div>
@@ -304,20 +628,19 @@ const subtotal = cart.reduce(
 
               <div className="flex justify-between text-sm text-gray-500">
                 <span>Frete</span>
-                <span>A definir</span>
+                <span>{formatarPreco(FRETE, moeda)}</span>
               </div>
 
               <div className="flex justify-between border-t border-gray-200 pt-4">
                 <span className="font-bold uppercase">Total</span>
                 <span className="text-xl font-black">
-                  {formatarPreco(subtotal, moeda)}
+                  {formatarPreco(total, moeda)}
                 </span>
               </div>
             </div>
 
             <p className="mt-6 text-xs leading-relaxed text-gray-400">
-              O valor do frete, se aplicável, deverá ser confirmado antes da
-              conclusão do pedido.
+              Entrega com frete fixo de R$ 5,00 por pedido.
             </p>
           </aside>
         </div>

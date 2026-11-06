@@ -1,28 +1,47 @@
-'use server';
-import { ProductType } from "../types/ProductType";
+"use server";
+
 import { stripe } from "../lib/stripe";
 
-export async function fetchProducts({lastProductId}: {lastProductId?: string | undefined}) {
-    const parms = lastProductId ? {starting_after: lastProductId, limit:1} : {};
+export async function fetchProducts({
+  lastProductId,
+}: {
+  lastProductId?: string;
+}) {
+  const params = lastProductId
+    ? { starting_after: lastProductId, limit: 10 }
+    : { limit: 10 };
 
-    const {data: products, has_more} = await stripe.products.list(parms);
+  const { data: products, has_more } =
+    await stripe.products.list(params);
 
-    const formatedProducts = await Promise.all(
-    products.map(async (product) => {
-      const price = await stripe.prices.list({
-        product: product.id,
-      });
+  const formatedProducts = await Promise.all(
+    products
+      .filter((product) => product.active)
+      .map(async (product) => {
+        const prices = await stripe.prices.list({
+          product: product.id,
+          active: true,
+          limit: 100,
+        });
 
-      return {
-        id: product.id,
-        price: price.data[0]?.unit_amount,
-        name: product.name,
-        image: product.images[0],
-        description: product.description,
-        currency: price.data[0]?.currency,
-      };
-    })
+        const activePrices = prices.data.filter(
+          (price) =>
+            price.currency === "brl" && price.unit_amount !== null
+        );
+
+        const price =
+          activePrices.length === 1 ? activePrices[0] : null;
+
+        return {
+          id: product.id,
+          price: price?.unit_amount ?? null,
+          name: product.name,
+          image: product.images[0] || "",
+          description: product.description,
+          currency: price?.currency ?? "brl",
+        };
+      })
   );
 
-  return {formatedProducts, has_more};
+  return { formatedProducts, has_more };
 }
