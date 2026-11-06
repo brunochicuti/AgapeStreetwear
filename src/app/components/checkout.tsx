@@ -31,6 +31,8 @@ type DadosComprador = {
   state: string;
 };
 
+type Etapa = "pessoais" | "entrega" | "pagamento";
+
 const dadosIniciais: DadosComprador = {
   fullName: "",
   cpf: "",
@@ -88,6 +90,63 @@ function Campo({
         className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm text-black outline-none transition placeholder:text-gray-400 focus:border-black"
       />
     </label>
+  );
+}
+
+function IndicadorEtapas({ etapa }: { etapa: Etapa }) {
+  const etapas = [
+    { id: "pessoais", numero: "01", nome: "Pessoais" },
+    { id: "entrega", numero: "02", nome: "Entrega" },
+    { id: "pagamento", numero: "03", nome: "Pagamento" },
+  ];
+
+  const indiceAtual = etapas.findIndex((item) => item.id === etapa);
+
+  return (
+    <div className="mb-8">
+      <div className="flex items-center justify-between">
+        {etapas.map((item, index) => {
+          const concluida = index < indiceAtual;
+          const atual = index === indiceAtual;
+
+          return (
+            <div
+              key={item.id}
+              className="flex flex-1 flex-col items-center"
+            >
+              <div
+                className={`flex h-9 w-9 items-center justify-center rounded-full text-xs font-bold ${
+                  atual || concluida
+                    ? "bg-black text-white"
+                    : "bg-gray-100 text-gray-400"
+                }`}
+              >
+                {concluida ? "✓" : item.numero}
+              </div>
+
+              <span
+                className={`mt-2 text-[10px] font-bold uppercase tracking-wider sm:text-xs ${
+                  atual ? "text-black" : "text-gray-400"
+                }`}
+              >
+                {item.nome}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="mt-4 flex gap-1">
+        {etapas.map((item, index) => (
+          <div
+            key={item.id}
+            className={`h-1 flex-1 rounded-full ${
+              index <= indiceAtual ? "bg-black" : "bg-gray-200"
+            }`}
+          />
+        ))}
+      </div>
+    </div>
   );
 }
 
@@ -186,9 +245,6 @@ export default function Checkout() {
   const paymentIntent = useCartStore((state) => state.paymentIntent);
   const setPaymentIntent = useCartStore((state) => state.setPaymentIntent);
 
-  const isOpen = useCartStore((state) => state.isOpen);
-  const toggleCart = useCartStore((state) => state.toggleCart);
-
   const [comprador, setComprador] =
     useState<DadosComprador>(dadosIniciais);
 
@@ -197,7 +253,7 @@ export default function Checkout() {
   const [erro, setErro] = useState("");
   const [carregando, setCarregando] = useState(false);
   const [consultandoCep, setConsultandoCep] = useState(false);
-  const [etapa, setEtapa] = useState<"dados" | "pagamento">("dados");
+  const [etapa, setEtapa] = useState<Etapa>("pessoais");
 
   const moeda = "BRL";
 
@@ -209,12 +265,6 @@ export default function Checkout() {
 
   const total = subtotal + FRETE;
 
-  useEffect(() => {
-    if (isOpen) {
-      toggleCart();
-    }
-  }, [isOpen, toggleCart]);
-
   function atualizarCampo(
     name: keyof DadosComprador,
     value: string
@@ -225,10 +275,28 @@ export default function Checkout() {
     }));
   }
 
+  function voltarParaPessoais() {
+    setErro("");
+    setEtapa("pessoais");
+  }
+
+  function voltarParaEntrega() {
+    // Invalida o estado local do pagamento para permitir
+    // uma nova preparação caso os dados sejam alterados.
+    setClientSecret("");
+    setCheckoutKey("");
+    setPaymentIntent("");
+    setErro("");
+    setEtapa("entrega");
+  }
+
   async function consultarCep() {
     const cep = comprador.zipCode.replace(/\D/g, "");
 
-    if (cep.length !== 8) return;
+    if (cep.length !== 8) {
+      setErro("Informe um CEP válido com 8 números.");
+      return;
+    }
 
     setConsultandoCep(true);
     setErro("");
@@ -264,6 +332,12 @@ export default function Checkout() {
     } finally {
       setConsultandoCep(false);
     }
+  }
+
+  function continuarParaEntrega(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setErro("");
+    setEtapa("entrega");
   }
 
   async function continuarParaPagamento(
@@ -329,14 +403,6 @@ export default function Checkout() {
     }
   }
 
-  function editarDados() {
-    setClientSecret("");
-    setCheckoutKey("");
-    setPaymentIntent("");
-    setErro("");
-    setEtapa("dados");
-  }
-
   const options: StripeElementsOptions = {
     clientSecret,
     appearance: {
@@ -372,8 +438,16 @@ export default function Checkout() {
   return (
     <div className="min-h-[calc(100vh-8rem)] bg-white px-4 py-10 text-black sm:px-8 lg:px-12">
       <div className="mx-auto max-w-6xl">
-        <div className="mb-10 border-b border-gray-200 pb-6">
-          <p className="text-xs font-bold uppercase tracking-[0.3em] text-gray-400">
+        <div className="mb-8 border-b border-gray-200 pb-6">
+          <a
+            href="/"
+            className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-gray-500 transition hover:text-black"
+          >
+            <span aria-hidden="true">←</span>
+            Continuar comprando
+          </a>
+
+          <p className="mt-6 text-xs font-bold uppercase tracking-[0.3em] text-gray-400">
             Agape Streetwear
           </p>
 
@@ -382,21 +456,27 @@ export default function Checkout() {
           </h1>
 
           <p className="mt-2 text-sm text-gray-500">
-            Revise seu pedido e informe os dados para entrega.
+            Complete as etapas abaixo para concluir sua compra.
           </p>
         </div>
 
         <div className="grid grid-cols-1 gap-10 lg:grid-cols-[1.2fr_0.8fr] lg:gap-16">
           <section className="order-2 lg:order-1">
-            {etapa === "dados" ? (
+            <IndicadorEtapas etapa={etapa} />
+
+            {etapa === "pessoais" && (
               <form
-                onSubmit={continuarParaPagamento}
-                className="space-y-9"
+                onSubmit={continuarParaEntrega}
+                className="space-y-8"
               >
                 <div>
-                  <h2 className="mb-5 text-lg font-black uppercase">
+                  <h2 className="mb-2 text-lg font-black uppercase">
                     01. Dados pessoais
                   </h2>
+
+                  <p className="mb-6 text-sm text-gray-500">
+                    Informe seus dados para identificação do pedido.
+                  </p>
 
                   <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
                     <div className="sm:col-span-2">
@@ -440,10 +520,37 @@ export default function Checkout() {
                   </div>
                 </div>
 
-                <div className="border-t border-gray-200 pt-8">
-                  <h2 className="mb-5 text-lg font-black uppercase">
+                {erro && (
+                  <p
+                    className="rounded-lg bg-red-50 p-3 text-sm text-red-600"
+                    role="alert"
+                  >
+                    {erro}
+                  </p>
+                )}
+
+                <button
+                  type="submit"
+                  className="w-full rounded-lg bg-black px-6 py-4 text-sm font-bold uppercase tracking-wider text-white transition hover:bg-gray-800"
+                >
+                  Continuar para entrega
+                </button>
+              </form>
+            )}
+
+            {etapa === "entrega" && (
+              <form
+                onSubmit={continuarParaPagamento}
+                className="space-y-8"
+              >
+                <div>
+                  <h2 className="mb-2 text-lg font-black uppercase">
                     02. Endereço de entrega
                   </h2>
+
+                  <p className="mb-6 text-sm text-gray-500">
+                    Informe onde deseja receber seu pedido.
+                  </p>
 
                   <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
                     <div>
@@ -531,39 +638,56 @@ export default function Checkout() {
                   </p>
                 )}
 
-                <button
-                  type="submit"
-                  disabled={carregando || consultandoCep}
-                  className="w-full rounded-lg bg-black px-6 py-4 text-sm font-bold uppercase tracking-wider text-white transition hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  {carregando
-                    ? "Preparando pagamento..."
-                    : "Continuar para pagamento"}
-                </button>
-
-                <p className="text-center text-xs text-gray-400">
-                  Os dados informados serão utilizados para processar e entregar seu pedido.
-                </p>
-              </form>
-            ) : (
-              <div className="space-y-6">
-                <div className="flex items-center justify-between border-b border-gray-200 pb-5">
-                  <div>
-                    <h2 className="text-lg font-black uppercase">
-                      03. Pagamento
-                    </h2>
-                    <p className="mt-1 text-sm text-gray-500">
-                      Informe a forma de pagamento.
-                    </p>
-                  </div>
-
+                <div className="flex flex-col-reverse gap-3 sm:flex-row">
                   <button
                     type="button"
-                    onClick={editarDados}
-                    className="text-xs font-bold uppercase underline underline-offset-4"
+                    onClick={voltarParaPessoais}
+                    className="w-full rounded-lg border border-gray-300 px-6 py-4 text-sm font-bold uppercase tracking-wider text-black transition hover:bg-gray-100"
                   >
-                    Editar dados
+                    Voltar
                   </button>
+
+                  <button
+                    type="submit"
+                    disabled={carregando || consultandoCep}
+                    className="w-full rounded-lg bg-black px-6 py-4 text-sm font-bold uppercase tracking-wider text-white transition hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {carregando
+                      ? "Preparando pagamento..."
+                      : "Continuar para pagamento"}
+                  </button>
+                </div>
+              </form>
+            )}
+
+            {etapa === "pagamento" && (
+              <div className="space-y-6">
+                <div className="border-b border-gray-200 pb-5">
+                  <h2 className="text-lg font-black uppercase">
+                    03. Pagamento
+                  </h2>
+
+                  <p className="mt-1 text-sm text-gray-500">
+                    Confira o resumo e informe os dados do pagamento.
+                  </p>
+                </div>
+
+                <div className="rounded-xl border border-gray-200 p-4">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-gray-500">
+                    Dados do comprador
+                  </h3>
+
+                  <p className="mt-2 text-sm font-semibold">
+                    {comprador.fullName}
+                  </p>
+
+                  <p className="mt-1 text-xs text-gray-500">
+                    {comprador.email}
+                  </p>
+
+                  <p className="text-xs text-gray-500">
+                    {comprador.street}, {comprador.number} — {comprador.city}/{comprador.state}
+                  </p>
                 </div>
 
                 {clientSecret && paymentIntent && (
@@ -575,11 +699,19 @@ export default function Checkout() {
                     <FormularioPagamento paymentIntentId={paymentIntent} />
                   </Elements>
                 )}
+
+                <button
+                  type="button"
+                  onClick={voltarParaEntrega}
+                  className="w-full rounded-lg border border-gray-300 px-6 py-4 text-sm font-bold uppercase tracking-wider text-black transition hover:bg-gray-100"
+                >
+                  Voltar para endereço de entrega
+                </button>
               </div>
             )}
           </section>
 
-          <aside className="order-1 h-fit rounded-xl bg-gray-50 p-5 sm:p-7 lg:order-2">
+          <aside className="order-1 h-fit rounded-xl bg-gray-50 p-5 sm:p-7 lg:sticky lg:top-8 lg:order-2">
             <h2 className="text-lg font-black uppercase">
               Resumo do pedido
             </h2>
