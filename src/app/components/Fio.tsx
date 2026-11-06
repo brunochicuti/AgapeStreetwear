@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { ProductType } from "@/src/types/ProductType";
 import { useCartStore } from "@/src/store";
 
@@ -18,13 +18,7 @@ function formatarPreco(preco: number | null, moeda = "brl") {
   }).format(preco / 100);
 }
 
-function Cabide({
-  id,
-  destaque,
-}: {
-  id: string;
-  destaque: boolean;
-}) {
+function Cabide({ id }: { id: string }) {
   return (
     <svg
       viewBox="0 0 120 100"
@@ -44,17 +38,12 @@ function Cabide({
       <g
         fill="none"
         stroke={`url(#metal-${id})`}
-        strokeWidth={destaque ? 2.7 : 2.3}
+        strokeWidth="2.5"
         strokeLinecap="round"
         strokeLinejoin="round"
       >
-        {/* Gancho que envolve visualmente o fio */}
         <path d="M60 5 C60 0 67 0 69 5 C72 12 67 19 60 19 C54 19 52 25 55 29" />
-
-        {/* Corpo do cabide */}
         <path d="M55 29 L12 61 Q8 65 15 66 L105 66 Q112 65 108 61 L65 29" />
-
-        {/* Pequeno reforço central */}
         <path d="M55 29 Q60 25 65 29" />
       </g>
     </svg>
@@ -63,34 +52,36 @@ function Cabide({
 
 export default function Fio({ products }: FioProps) {
   const addProduct = useCartStore((state) => state.addProduct);
-  const [indice, setIndice] = useState(0);
+  const araraRef = useRef<HTMLDivElement>(null);
+
   const [produtoAberto, setProdutoAberto] =
     useState<ProductType | null>(null);
 
-  const produtosValidos = products.filter(
-    (produto) => Boolean(produto.image)
+  const [indice, setIndice] = useState(0);
+
+  const produtosValidos = products.filter((produto) =>
+    Boolean(produto.image)
   );
 
-  if (produtosValidos.length === 0) {
-    return null;
-  }
+  if (produtosValidos.length === 0) return null;
 
   const total = produtosValidos.length;
+  const produtoCentral = produtosValidos[indice] ?? produtosValidos[0];
 
   function navegar(direcao: number) {
-    setIndice((atual) => (atual + direcao + total) % total);
+    const novoIndice = (indice + direcao + total) % total;
+    setIndice(novoIndice);
+
+    const item = araraRef.current?.querySelector(
+      `[data-produto-index="${novoIndice}"]`
+    );
+
+    item?.scrollIntoView({
+      behavior: "smooth",
+      block: "nearest",
+      inline: "center",
+    });
   }
-
-  function distanciaCircular(posicao: number) {
-    let distancia = posicao - indice;
-
-    if (distancia > total / 2) distancia -= total;
-    if (distancia < -total / 2) distancia += total;
-
-    return distancia;
-  }
-
-  const produtoCentral = produtosValidos[indice];
 
   return (
     <section
@@ -109,40 +100,49 @@ export default function Fio({ products }: FioProps) {
             linear-gradient(180deg, #f9f8f5 0%, #f1eee8 100%);
         }
 
-        .fio-palco {
-          perspective: 1200px;
-          perspective-origin: 50% 36%;
-          transform-style: preserve-3d;
+        .arara-scroll {
+          scrollbar-width: none;
+          -ms-overflow-style: none;
+          scroll-behavior: smooth;
         }
 
-        .fio-item {
-          transform-style: preserve-3d;
-          transform-origin: 50% 12%;
+        .arara-scroll::-webkit-scrollbar {
+          display: none;
+        }
+
+        .arara-item {
+          flex: 0 0 190px;
           transition:
-            left 700ms cubic-bezier(0.22, 1, 0.36, 1),
-            top 700ms cubic-bezier(0.22, 1, 0.36, 1),
-            transform 700ms cubic-bezier(0.22, 1, 0.36, 1),
-            opacity 500ms ease,
-            filter 500ms ease;
-          will-change: transform, left, top;
-          -webkit-tap-highlight-color: transparent;
+            flex-basis 650ms cubic-bezier(0.22, 1, 0.36, 1),
+            opacity 450ms ease;
+          transform-origin: center top;
         }
 
-        .fio-imagem {
-          transform-style: preserve-3d;
-          transform-origin: 50% 12%;
+        .arara-item:hover,
+        .arara-item:focus-within {
+          flex-basis: 310px;
+        }
+
+        .arara-roupa {
+          height: 290px;
           transition:
-            transform 700ms cubic-bezier(0.22, 1, 0.36, 1),
+            height 650ms cubic-bezier(0.22, 1, 0.36, 1),
+            transform 650ms cubic-bezier(0.22, 1, 0.36, 1),
             filter 500ms ease;
-          filter: drop-shadow(0 16px 14px rgba(35, 30, 25, 0.11));
+          filter: drop-shadow(0 13px 12px rgba(35, 30, 25, 0.10));
         }
 
-        .fio-item:hover .fio-imagem {
-          filter: drop-shadow(0 23px 20px rgba(35, 30, 25, 0.16));
+        .arara-item:hover .arara-roupa,
+        .arara-item:focus-within .arara-roupa {
+          height: 390px;
+          transform: translateY(-7px) scale(1.02);
+          filter: drop-shadow(0 22px 18px rgba(35, 30, 25, 0.17));
         }
 
-        .fio-fio {
-          filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.13));
+        .arara-nome {
+          transition:
+            opacity 350ms ease,
+            transform 350ms ease;
         }
 
         .fio-botao {
@@ -171,9 +171,30 @@ export default function Fio({ products }: FioProps) {
           }
         }
 
+        @media (max-width: 1023px) {
+          .arara-item {
+            flex-basis: 160px;
+          }
+
+          .arara-item:hover,
+          .arara-item:focus-within {
+            flex-basis: 190px;
+          }
+
+          .arara-roupa {
+            height: 270px;
+          }
+
+          .arara-item:hover .arara-roupa,
+          .arara-item:focus-within .arara-roupa {
+            height: 300px;
+          }
+        }
+
         @media (prefers-reduced-motion: reduce) {
-          .fio-item,
-          .fio-imagem,
+          .arara-item,
+          .arara-roupa,
+          .arara-nome,
           .fio-botao {
             transition: none;
           }
@@ -228,17 +249,13 @@ export default function Fio({ products }: FioProps) {
               </p>
             )}
 
-                <button
-                type="button"
-                onClick={() => {
-                    addProduct(produtoAberto);
-                }}
-                className="fio-botao mt-9 flex min-h-14 w-full items-center justify-center rounded-full bg-[#22211f] px-7 py-4 text-sm font-medium tracking-wide text-white hover:bg-[#44413c]"
-                >
-                Adicionar à sacola
-                <span className="ml-3" aria-hidden="true">
-                </span>
-                </button>
+            <button
+              type="button"
+              onClick={() => addProduct(produtoAberto)}
+              className="fio-botao mt-9 flex min-h-14 w-full items-center justify-center rounded-full bg-[#22211f] px-7 py-4 text-sm font-medium tracking-wide text-white hover:bg-[#44413c]"
+            >
+              Adicionar à sacola
+            </button>
 
             <p className="mt-4 text-center text-xs leading-5 text-[#898278]">
               Descubra todos os detalhes desta peça.
@@ -261,136 +278,61 @@ export default function Fio({ products }: FioProps) {
             </p>
           </header>
 
-          {/* Palco 3D para telas maiores */}
-          <div className="fio-palco relative mx-auto hidden h-[590px] w-full max-w-[1500px] overflow-hidden lg:block lg:h-[680px]">
-            {/* Sombra suave no chão */}
-            <div className="pointer-events-none absolute inset-x-[18%] bottom-[35px] h-12 rounded-[50%] bg-[#777064]/10 blur-3xl" />
+          {/* Arara horizontal */}
+          <div className="relative mx-auto mt-8 w-full max-w-[1600px] pb-8 pt-5 sm:mt-12">
+            {/* Barra metálica */}
+            <div className="pointer-events-none absolute left-[4%] right-[4%] top-[45px] z-10 h-[5px] rounded-full bg-gradient-to-b from-white via-[#89857e] to-[#d5d1ca] shadow-sm" />
 
-            {/* Fio curvo: os produtos são posicionados seguindo esta curva */}
-            <svg
-              className="fio-fio pointer-events-none absolute left-0 top-0 z-10 h-[145px] w-full overflow-visible"
-              viewBox="0 0 1400 180"
-              preserveAspectRatio="none"
-              aria-hidden="true"
+            {/* Suportes da arara */}
+            <div className="pointer-events-none absolute left-[4%] top-[35px] z-0 h-5 w-[5px] rounded-full bg-[#aaa69e]" />
+            <div className="pointer-events-none absolute right-[4%] top-[35px] z-0 h-5 w-[5px] rounded-full bg-[#aaa69e]" />
+
+            <div
+              ref={araraRef}
+              className="arara-scroll relative z-20 flex min-h-[510px] items-start overflow-x-auto overflow-y-hidden px-[8%] pb-5 pt-0"
             >
-              <defs>
-                <linearGradient id="fio-metal" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#d9d6d0" />
-                  <stop offset="45%" stopColor="#77736d" />
-                  <stop offset="70%" stopColor="#f5f3ee" />
-                  <stop offset="100%" stopColor="#aaa59d" />
-                </linearGradient>
-              </defs>
-
-              <path
-                d="M 8 5 Q 700 250 1392 5"
-                fill="none"
-                stroke="#ffffff"
-                strokeWidth="5"
-                opacity="0.7"
-              />
-              <path
-                d="M 8 5 Q 700 250 1392 5"
-                fill="none"
-                stroke="url(#fio-metal)"
-                strokeWidth="2.2"
-              />
-            </svg>
-
-            {produtosValidos.map((produto, posicao) => {
-              const distancia = distanciaCircular(posicao);
-              const distanciaAbs = Math.abs(distancia);
-              const visivel = distanciaAbs <= 2.5;
-
-              if (!visivel) return null;
-
-              /*
-               * A coordenada vertical usa a mesma curva do SVG.
-               * Assim, o topo do gancho acompanha a posição do fio.
-               */
-              const curva = Math.max(
-                0,
-                1 - Math.pow(distancia / 2.5, 2)
-              );
-              const wireY = (5 + 122.5 * curva) * (145 / 180);
-
-              const xPct = 50 + distancia * 19;
-              const rotacaoY = distancia * -31;
-              const rotacaoZ = distancia * -3.5;
-              const escala = Math.max(0.61, 1 - distanciaAbs * 0.14);
-              const opacidade = Math.max(0.46, 1 - distanciaAbs * 0.18);
-              const largura = distanciaAbs < 0.1 ? 270 : 250;
-
-              return (
+              {produtosValidos.map((produto, posicao) => (
                 <button
                   key={produto.id}
                   type="button"
+                  data-produto-index={posicao}
                   aria-label={`Ver ${produto.name}`}
                   onMouseEnter={() => setIndice(posicao)}
                   onFocus={() => setIndice(posicao)}
-                  onClick={() => {
-                    if (distancia === 0) {
-                      setProdutoAberto(produto);
-                    } else {
-                      setIndice(posicao);
-                    }
-                  }}
-                  className="fio-item absolute z-20 flex flex-col items-center border-0 bg-transparent p-0 outline-none focus-visible:ring-2 focus-visible:ring-[#8b8174] focus-visible:ring-offset-4"
-                  style={{
-                    left: `${xPct}%`,
-                    top: `${wireY - 2}px`,
-                    width: `${largura}px`,
-                    opacity: opacidade,
-                    filter: `blur(${Math.max(0, distanciaAbs - 1.5) * 0.35}px)`,
-                    transform: `translateX(-50%) rotateY(${rotacaoY}deg) rotateZ(${rotacaoZ}deg) scale(${escala})`,
-                    zIndex: 30 - Math.round(distanciaAbs * 5),
-                  }}
+                  onClick={() => setProdutoAberto(produto)}
+                  className="arara-item group relative flex shrink-0 flex-col items-center border-0 bg-transparent px-2 pt-0 outline-none focus-visible:ring-2 focus-visible:ring-[#8b8174]"
                 >
-                  {/* O cabide cruza o fio para parecer realmente suspenso */}
-                  <div className="relative z-20 w-[86px] shrink-0">
-                    <Cabide
-                      id={`desktop-${produto.id}`}
-                      destaque={distancia === 0}
-                    />
+                  {/* Cabide preso à barra */}
+                  <div className="relative z-20 w-[78px]">
+                    <Cabide id={`arara-${produto.id}`} />
                   </div>
 
-                  {/* A peça fica alinhada abaixo dos ombros do cabide */}
-                  <div
-                    className="fio-imagem relative z-10 -mt-[19px] flex h-[355px] w-full items-start justify-center"
-                    style={{
-                      transform: `rotateY(${distancia * 7}deg)`,
-                    }}
-                  >
+                  {/* Produto */}
+                  <div className="relative z-10 -mt-[17px] flex w-full items-start justify-center">
                     <img
                       src={produto.image}
                       alt={produto.name}
                       draggable={false}
-                      className="h-full w-full select-none object-contain"
-                      loading={distanciaAbs <= 1 ? "eager" : "lazy"}
+                      loading={posicao < 5 ? "eager" : "lazy"}
+                      className="arara-roupa w-full select-none object-contain"
                     />
                   </div>
 
-                  <span
-                    className={`mt-1 max-w-[240px] truncate text-center text-xs tracking-wide transition-opacity ${
-                      distancia === 0
-                        ? "font-medium text-[#39352f] opacity-100"
-                        : "text-[#777168] opacity-80"
-                    }`}
-                  >
+                  <span className="arara-nome mt-2 max-w-full truncate px-2 text-center text-xs font-medium tracking-wide text-[#514c44]">
                     {produto.name}
                   </span>
                 </button>
-              );
-            })}
+              ))}
+            </div>
 
-            {/* Controles */}
+            {/* Setas de navegação */}
             {total > 1 && (
               <>
                 <button
                   type="button"
                   onClick={() => navegar(-1)}
                   aria-label="Peça anterior"
-                  className="fio-botao absolute left-5 top-[48%] z-40 flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full border border-black/10 bg-white/80 text-2xl text-[#38352f] shadow-sm backdrop-blur-md hover:bg-white lg:left-10"
+                  className="fio-botao absolute left-3 top-[48%] z-30 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-black/10 bg-white/90 text-2xl text-[#38352f] shadow-md backdrop-blur-md hover:bg-white sm:left-6 sm:h-12 sm:w-12"
                 >
                   ‹
                 </button>
@@ -399,7 +341,7 @@ export default function Fio({ products }: FioProps) {
                   type="button"
                   onClick={() => navegar(1)}
                   aria-label="Próxima peça"
-                  className="fio-botao absolute right-5 top-[48%] z-40 flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full border border-black/10 bg-white/80 text-2xl text-[#38352f] shadow-sm backdrop-blur-md hover:bg-white lg:right-10"
+                  className="fio-botao absolute right-3 top-[48%] z-30 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-black/10 bg-white/90 text-2xl text-[#38352f] shadow-md backdrop-blur-md hover:bg-white sm:right-6 sm:h-12 sm:w-12"
                 >
                   ›
                 </button>
@@ -407,101 +349,11 @@ export default function Fio({ products }: FioProps) {
             )}
           </div>
 
-          {/* Versão para celular */}
-          <div className="relative px-4 pb-10 pt-5 lg:hidden">
-            <div className="relative mx-auto flex min-h-[420px] max-w-[410px] flex-col items-center justify-center">
-              <svg
-                className="pointer-events-none absolute left-0 top-0 z-10 h-[90px] w-full"
-                viewBox="0 0 400 110"
-                preserveAspectRatio="none"
-                aria-hidden="true"
-              >
-                <defs>
-                  <linearGradient id="fio-mobile-metal" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#d9d6d0" />
-                    <stop offset="50%" stopColor="#77736d" />
-                    <stop offset="100%" stopColor="#c9c4bb" />
-                  </linearGradient>
-                </defs>
-                <path
-                  d="M 2 3 Q 200 150 398 3"
-                  fill="none"
-                  stroke="#fff"
-                  strokeWidth="4"
-                  opacity="0.8"
-                />
-                <path
-                  d="M 2 3 Q 200 150 398 3"
-                  fill="none"
-                  stroke="url(#fio-mobile-metal)"
-                  strokeWidth="2"
-                />
-              </svg>
+          <div className="relative z-30 flex flex-col items-center gap-5 pb-12">
+            <p className="text-xs tracking-wide text-[#827b72]">
+              {indice + 1} de {total} peças
+            </p>
 
-              <div className="relative z-20 mt-5 w-[76px]">
-                <Cabide id="mobile" destaque />
-              </div>
-
-              <div className="relative z-10 -mt-[17px] flex h-[310px] w-full items-center justify-center">
-                <img
-                  key={produtoCentral.id}
-                  src={produtoCentral.image}
-                  alt={produtoCentral.name}
-                  className="h-full w-full animate-[fio-aparecer_450ms_ease] object-contain drop-shadow-[0_18px_15px_rgba(0,0,0,0.12)]"
-                />
-              </div>
-
-              <p className="mt-1 max-w-full truncate px-4 text-center text-sm font-medium text-[#39352f]">
-                {produtoCentral.name}
-              </p>
-              <p className="mt-2 text-sm text-[#827b72]">
-                {formatarPreco(
-                  produtoCentral.price,
-                  produtoCentral.currency || "brl"
-                )}
-              </p>
-            </div>
-
-            {total > 1 && (
-              <div className="mt-4 flex items-center justify-center gap-8">
-                <button
-                  type="button"
-                  onClick={() => navegar(-1)}
-                  aria-label="Peça anterior"
-                  className="fio-botao flex h-11 w-11 items-center justify-center rounded-full border border-black/10 bg-white/80 text-2xl"
-                >
-                  ‹
-                </button>
-
-                <span className="min-w-[64px] text-center text-xs tabular-nums text-[#827b72]">
-                  {indice + 1} / {total}
-                </span>
-
-                <button
-                  type="button"
-                  onClick={() => navegar(1)}
-                  aria-label="Próxima peça"
-                  className="fio-botao flex h-11 w-11 items-center justify-center rounded-full border border-black/10 bg-white/80 text-2xl"
-                >
-                  ›
-                </button>
-              </div>
-            )}
-
-            <button
-              type="button"
-              onClick={() => setProdutoAberto(produtoCentral)}
-              className="fio-botao mx-auto mt-6 flex min-h-12 w-full max-w-[320px] items-center justify-center rounded-full bg-[#22211f] px-6 py-3 text-sm font-medium text-white hover:bg-[#44413c]"
-            >
-              Ver detalhes da peça
-              <span className="ml-3" aria-hidden="true">
-                →
-              </span>
-            </button>
-          </div>
-
-          {/* Ação para a peça central no desktop */}
-          <div className="relative z-40 hidden justify-center pb-12 lg:flex">
             <button
               type="button"
               onClick={() => setProdutoAberto(produtoCentral)}
