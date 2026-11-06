@@ -326,6 +326,8 @@ export default function Fio({ products }: FioProps) {
                   key={produto.id}
                   type="button"
                   aria-label={`Ver ${produto.name}`}
+                  onMouseEnter={() => setIndice(posicao)}
+                  onFocus={() => setIndice(posicao)}
                   onClick={() => {
                     if (distancia === 0) {
                       setProdutoAberto(produto);
