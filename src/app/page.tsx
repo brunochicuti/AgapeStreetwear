@@ -1,11 +1,11 @@
 import { connection } from "next/server";
-import Fio from "./components/Fio";
 import { fetchProducts } from "./actions";
+import ClosetAgape from "@/src/app/components/ClosetAgape";
 
 export default async function Home() {
   await connection();
 
   const { formatedProducts } = await fetchProducts({});
 
-  return <Fio products={formatedProducts} />;
+  return <ClosetAgape  products={formatedProducts} />;
 }
