@@ -12,7 +12,14 @@ import { useCartStore } from "@/src/store";
 import { useEffect, useState, FormEvent } from "react";
 
 const stripePromise = loadStripe(
-  process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY_LIVE!
+  process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY_LIVE!,
+  {
+    developerTools: {
+      assistant: {
+        enabled: false,
+      },
+    },
+  }
 );
 
 const FRETE = 5;
