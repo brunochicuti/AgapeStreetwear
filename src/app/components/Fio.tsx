@@ -125,9 +125,13 @@ export default function Fio({ products }: FioProps) {
 
         .arara-roupa {
           height: 290px;
+          transform: rotateY(65deg) scale(0.82);
+          transform-style: preserve-3d;
+          transform-origin: center center;
+          backface-visibility: hidden;
           transition:
             height 650ms cubic-bezier(0.22, 1, 0.36, 1),
-            transform 650ms cubic-bezier(0.22, 1, 0.36, 1),
+            transform 700ms cubic-bezier(0.22, 1, 0.36, 1),
             filter 500ms ease;
           filter: drop-shadow(0 13px 12px rgba(35, 30, 25, 0.10));
         }
@@ -135,9 +139,18 @@ export default function Fio({ products }: FioProps) {
         .arara-item:hover .arara-roupa,
         .arara-item:focus-within .arara-roupa {
           height: 390px;
-          transform: translateY(-7px) scale(1.02);
+          transform: rotateY(0deg) scale(1.02);
           filter: drop-shadow(0 22px 18px rgba(35, 30, 25, 0.17));
         }
+
+        .arara-item {
+        flex: 0 0 190px;
+        perspective: 1000px;
+        transform-style: preserve-3d;
+        transition:
+          flex-basis 650ms cubic-bezier(0.22, 1, 0.36, 1),
+          opacity 450ms ease;
+      }
 
         .arara-nome {
           transition:
