@@ -952,7 +952,30 @@ export function ClothingRailHero({
         onPointerLeave={(event) => { if (event.pointerType === "mouse" && pointer.current.id < 0 && !size.carousel && !document.activeElement?.matches("[data-garment]:focus-visible")) choose(null); }}
         onKeyDown={onKeyDown}
       >
-        <div aria-hidden="true" data-rail className="pointer-events-none absolute inset-x-0 z-0" style={{ top: railY - railR, height: railR * 2 }}>
+        {/* Estrutura completa do varal: montantes laterais e pés de apoio. */}
+        <div aria-hidden="true" className="pointer-events-none absolute inset-0 z-0">
+          {["left", "right"].map((side) => (
+            <div
+              key={side}
+              className="absolute"
+              style={{
+                [side]: "5.5%",
+                top: railY + railR - 1,
+                bottom: 8,
+                width: 7,
+                borderRadius: 999,
+                background: "linear-gradient(90deg, #77736d 0%, #e2ded6 28%, #aaa59b 58%, #65615b 100%)",
+                boxShadow: "0 2px 4px rgba(0,0,0,.16)",
+              }}
+            >
+              <span
+                className="absolute -bottom-1 left-1/2 h-2 w-12 -translate-x-1/2 rounded-full"
+                style={{ background: "linear-gradient(to bottom, #aaa59b, #5f5b55)", boxShadow: "0 3px 5px rgba(0,0,0,.16)" }}
+              />
+            </div>
+          ))}
+        </div>
+        <div aria-hidden="true" data-rail className="pointer-events-none absolute inset-x-0 z-10" style={{ top: railY - railR, height: railR * 2 }}>
           <div className="absolute inset-x-0 h-3 rounded-full bg-foreground/10 blur-[5px]" style={{ top: railR * 2 + 1 }} />
           <div className="absolute inset-0 rounded-full" style={{ background: "linear-gradient(to bottom, color-mix(in oklab, var(--color-muted-foreground) 35%, white) 0%, white 18%, color-mix(in oklab, var(--color-muted-foreground) 70%, white) 38%, var(--color-muted-foreground) 62%, color-mix(in oklab, var(--color-muted-foreground) 55%, black) 100%)", boxShadow: "0 1px 0 color-mix(in oklab, var(--color-foreground) 18%, transparent)" }} />
           <div className="absolute inset-0 rounded-full opacity-40 mix-blend-overlay" style={{ background: "repeating-linear-gradient(90deg, transparent 0 2px, color-mix(in oklab, white 40%, transparent) 2px 3px, transparent 3px 7px)" }} />
