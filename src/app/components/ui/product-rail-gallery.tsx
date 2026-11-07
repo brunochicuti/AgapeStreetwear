@@ -925,7 +925,7 @@ export function ClothingRailHero({
 
   const current = active === null ? null : items[active];
   const h = size.h;
-  const boxW = h * ASPECT;
+  const boxW = h * (ASPECT * 1.15);
   const railY = Math.round(h * 0.07) + 10;
   const railR = Math.max(3, Math.round((RAIL_R / VB_H) * h * 10) / 10);
   const bottom = count ? Math.max(...items.map((item) => (item.image ? VB_H : SIDE[item.kind ?? "tee"].hem + 8))) / VB_H : 1;
