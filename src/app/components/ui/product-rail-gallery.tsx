@@ -521,8 +521,15 @@ function SideArt({ uid, kind, color, trim }: { uid: string; kind: GarmentKind; c
   );
 }
 
-function Photo({ src, alt, full }: { src: string; alt: string; full: boolean }) {
-  return <img src={src} alt={alt} draggable={false} className={`pointer-events-none absolute left-1/2 w-auto max-w-none -translate-x-1/2 select-none object-contain object-top ${full ? "top-0 h-full" : "top-[13%] h-[87%]"}`} />;
+// Onde a foto começa quando o cabide é desenhado (em % da altura da peça).
+// Menor = a camiseta sobe e cobre mais o cabide. Maior = desce e deixa o cabide aparecer mais.
+const PHOTO_TOP = 10;
+// Mesma ideia, só para a foto de lado (sideImage). Menor = sobe e encosta no cabide.
+const PHOTO_TOP_SIDE = 3;
+const PHOTO_H = 87;
+
+function Photo({ src, alt, full, top = PHOTO_TOP }: { src: string; alt: string; full: boolean; top?: number }) {
+  return <img src={src} alt={alt} draggable={false} className={`pointer-events-none absolute left-1/2 w-auto max-w-none -translate-x-1/2 select-none object-contain object-top ${full ? "top-0 h-full" : ""}`} style={full ? undefined : { top: `${top}%`, height: `${PHOTO_H}%` }} />;
 }
 
 type Sim = {
@@ -995,7 +1002,7 @@ export function ClothingRailHero({
           const trim = item.trim ?? mix(color, -0.12);
           const turned = active === i;
           const mask = item.image ? `url("${item.image}")` : silhouetteMask(kind, "front");
-          const photoBox = hanger === "none" ? "inset-0" : "inset-x-0 bottom-0 top-[13%]";
+          const photoBox = hanger === "none" ? "inset-0" : "inset-x-0 bottom-0 top-[10%]";
           return (
             <button
               key={item.id}
@@ -1019,7 +1026,7 @@ export function ClothingRailHero({
                 {(item.sideImage || !item.image) && (
                   <span ref={(node) => { sides.current[i] = node; }} data-face="side" className="absolute inset-0" style={{ transform: `perspective(${PERSPECTIVE}px) rotateY(0deg)` }}>
                     <SideHanger uid={uid} material={hanger} />
-                    {item.sideImage ? <Photo src={item.sideImage} alt="" full={hanger === "none"} /> : <SideArt uid={uid} kind={kind} color={color} trim={trim} />}
+                    {item.sideImage ? <Photo src={item.sideImage} alt="" full={hanger === "none"} top={PHOTO_TOP_SIDE} /> : <SideArt uid={uid} kind={kind} color={color} trim={trim} />}
                   </span>
                 )}
                 <span ref={(node) => { turns.current[i] = node; }} data-turn className="absolute inset-0 rounded-lg [transform-style:preserve-3d]" style={{ transform: `perspective(${PERSPECTIVE}px) rotateY(${REST}deg)`, opacity: item.image && !item.sideImage ? 1 : 0 }}>
