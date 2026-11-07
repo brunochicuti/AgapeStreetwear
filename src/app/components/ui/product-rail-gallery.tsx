@@ -534,7 +534,7 @@ function SideArt({ uid, kind, color, trim }: { uid: string; kind: GarmentKind; c
 
 // Onde a foto começa quando o cabide é desenhado (em % da altura da peça).
 // Menor = a camiseta sobe e cobre mais o cabide. Maior = desce e deixa o cabide aparecer mais.
-const PHOTO_TOP = 6;
+const PHOTO_TOP = 8;
 // Mesma ideia, só para a foto de lado (sideImage). Menor = sobe e encosta no cabide.
 const PHOTO_TOP_SIDE = 3;
 const PHOTO_H = 87;
