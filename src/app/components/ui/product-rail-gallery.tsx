@@ -523,7 +523,7 @@ function Photo({ src, alt, full, back = false }: {
     src={src}
     alt={alt}
     draggable={false}
-    className={`pointer-events-none absolute bottom-0 select-none object-contain object-top ${
+    className={`pointer-events-none absolute bottom-0 select-none ${back ? "object-cover object-top" : "object-contain object-top"} ${
       full ? "top-0 h-full" : "top-[2%] h-[96%]"
     }`}
     style={{
