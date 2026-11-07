@@ -958,14 +958,15 @@ export function ClothingRailHero({
   const bottom = count ? Math.max(...items.map((item) => (item.image ? VB_H : SIDE[item.kind ?? "tee"].hem + 8))) / VB_H : 1;
 
   return (
-    <section
-      {...rest}
-      data-slot="clothing-rail-hero"
-      data-mode={size.carousel ? "carousel" : "rail"}
-      data-active={active ?? ""}
-      aria-roledescription="clothing rail"
-      className={`relative isolate w-full overflow-hidden bg-background text-foreground ${className ?? ""}`}
-    >
+        <section
+        {...rest}
+        data-slot="clothing-rail-hero"
+        data-mode={size.carousel ? "carousel" : "rail"}
+        data-active={active ?? ""}
+        aria-roledescription="clothing rail"
+        className={`relative isolate w-full overflow-hidden text-foreground ${className ?? ""}`}
+        style={{ backgroundColor: "#F5F1E8" }}
+        >
       <Defs uid={uid} />
       <div aria-hidden="true" className="pointer-events-none absolute inset-0 -z-10" style={{ background: "radial-gradient(120% 70% at 18% 0%, color-mix(in oklab, var(--color-foreground) 7%, transparent), transparent 62%), linear-gradient(to bottom, transparent 55%, color-mix(in oklab, var(--color-foreground) 5%, transparent))" }} />
       {(eyebrow || heading) && (
