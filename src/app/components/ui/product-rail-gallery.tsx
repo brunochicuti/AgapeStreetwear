@@ -376,8 +376,8 @@ function Defs({ uid }: { uid: string }) {
 
 const HOOK = "M100,36 L100,-0.4 C100,-3.4 102.2,-4.2 103.9,-2.8 C104.9,-2 105.4,-1.2 105.6,-0.2";
 const HOOK_HI = "M99.5,30 L99.5,-0.2 C99.5,-2.4 101,-3.2 102.4,-2.6";
-const BAR = "M38,59 Q70,41 100,36 Q130,41 162,59";
-const BAR_HI = "M40,56.5 Q71,38.5 100,33.5 Q129,38.5 160,56.5";
+const BAR = "M42,72 Q70,44 100,36 Q130,44 158,72";
+const BAR_HI = "M44,69.5 Q71,42.5 100,34.5 Q129,42.5 156,69.5";
 
 function Hook({ uid }: { uid: string }) {
   return (
@@ -397,7 +397,13 @@ function HangerBack({ uid, side, kind, material }: { uid: string; side: "front" 
   const art = kind ? artFor(kind, side) : null;
   const bar = material === "wood" ? `url(#${uid}-wood)` : "currentColor";
   return (
-    <svg aria-hidden="true" viewBox={`0 0 ${VB_W} ${VB_H}`} preserveAspectRatio="xMidYMin meet" className={`absolute inset-0 size-full overflow-visible ${material === "matte" ? "text-foreground/85" : ""}`}>
+    <svg 
+      aria-hidden="true" 
+      viewBox={`0 0 ${VB_W} ${VB_H}`} 
+      preserveAspectRatio="xMidYMin meet" 
+      className={`absolute inset-0 size-full overflow-visible ${material === "matte" ? "text-foreground/85" : ""}`}
+      style={{ transform: "translateY(18px)" }} // <-- Desce o corpo de madeira para dentro da gola
+    >
       {art?.hood && <path d={art.hood} fill="var(--garment-color)" />}
       {art?.hood && <path d={art.hood} fill="black" fillOpacity="0.22" />}
       {art?.under && <path d={art.under} fill="var(--garment-under)" />}
