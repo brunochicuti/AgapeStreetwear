@@ -331,6 +331,18 @@ function Defs({ uid }: { uid: string }) {
           <stop offset="0.78" stopColor="color-mix(in oklab, gray 65%, black)" />
           <stop offset="1" stopColor="color-mix(in oklab, gray 75%, white)" />
         </linearGradient>
+        {/* Gradientes e brilhos adicionados para o tubo metálico da arara */}
+        <linearGradient id="rail-tubing" x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" stopColor="#2a2a2a" />
+          <stop offset="30%" stopColor="#7a7a7a" />
+          <stop offset="50%" stopColor="#e8e8e8" />
+          <stop offset="70%" stopColor="#555555" />
+          <stop offset="100%" stopColor="#111111" />
+        </linearGradient>
+        <linearGradient id="rail-shine" x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" stopColor="#ffffff" stopOpacity="0.65" />
+          <stop offset="100%" stopColor="#ffffff" stopOpacity="0" />
+        </linearGradient>
         <pattern id={`${uid}-rib`} width="2.6" height="8" patternUnits="userSpaceOnUse">
           <rect width="1.1" height="8" fill="black" fillOpacity="0.2" />
           <rect x="1.3" width="0.7" height="8" fill="white" fillOpacity="0.08" />
@@ -950,10 +962,16 @@ export function ClothingRailHero({
         onPointerLeave={(event) => { if (event.pointerType === "mouse" && pointer.current.id < 0 && !size.carousel && !document.activeElement?.matches("[data-garment]:focus-visible")) choose(null); }}
         onKeyDown={onKeyDown}
       >
+        {/* Nova Barra Metálica 3D Substituindo o antigo tracejado */}
         <div aria-hidden="true" data-rail className="pointer-events-none absolute inset-x-0 z-0" style={{ top: railY - railR, height: railR * 2 }}>
-          <div className="absolute inset-x-0 h-3 rounded-full bg-foreground/10 blur-[5px]" style={{ top: railR * 2 + 1 }} />
-          <div className="absolute inset-0 rounded-full" style={{ background: "linear-gradient(to bottom, color-mix(in oklab, var(--color-muted-foreground) 35%, white) 0%, white 18%, color-mix(in oklab, var(--color-muted-foreground) 70%, white) 38%, var(--color-muted-foreground) 62%, color-mix(in oklab, var(--color-muted-foreground) 55%, black) 100%)", boxShadow: "0 1px 0 color-mix(in oklab, var(--color-foreground) 18%, transparent)" }} />
-          <div className="absolute inset-0 rounded-full opacity-40 mix-blend-overlay" style={{ background: "repeating-linear-gradient(90deg, transparent 0 2px, color-mix(in oklab, white 40%, transparent) 2px 3px, transparent 3px 7px)" }} />
+          {/* Sombra suave projetada pela barra */}
+          <div className="absolute inset-x-0 h-3 rounded-full bg-black/35 blur-[3px]" style={{ top: railR * 2 + 2 }} />
+          {/* Tubo Metálico Principal */}
+          <div className="absolute inset-0 rounded-full" style={{ background: "url(#rail-tubing), linear-gradient(to bottom, #2a2a2a 0%, #7a7a7a 30%, #e8e8e8 50%, #555555 70%, #111111 100%)", boxShadow: "0 1px 3px rgba(0,0,0,0.4)" }} />
+          {/* Reflexo de luz superior no tubo (Efeito Cilíndrico 3D) */}
+          <div className="absolute inset-x-0 top-0 h-[35%] rounded-t-full bg-gradient-to-b from-white/70 to-transparent" />
+          
+          {/* Sordas / Suportes laterais da arara */}
           {[0, 1].map((side) => (
             <div key={side} className="absolute top-1/2 h-7 w-4 -translate-y-1/2 rounded-[3px]" style={{ [side ? "right" : "left"]: 6, background: "linear-gradient(to right, color-mix(in oklab, var(--color-muted-foreground) 60%, white), var(--color-muted-foreground) 55%, color-mix(in oklab, var(--color-muted-foreground) 60%, black))", boxShadow: "0 3px 6px color-mix(in oklab, var(--color-foreground) 18%, transparent)" }}>
               <span className="absolute left-1/2 top-1 size-1 -translate-x-1/2 rounded-full bg-foreground/35" />
