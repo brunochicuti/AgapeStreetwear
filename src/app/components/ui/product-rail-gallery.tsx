@@ -527,9 +527,9 @@ function Photo({ src, alt, full, back = false }: {
       full ? "top-0 h-full" : "top-[2%] h-[96%]"
     }`}
     style={{
-      width: back ? "115%" : "100%",
-      height: back ? "115%" : undefined,
-      left: back ? "-7.5%" : "0",
+    width: back ? "130%" : "100%",
+    height: back ? "130%" : undefined,
+    left: back ? "-15%" : "0",
       maxWidth: "none",
     }}
   />
