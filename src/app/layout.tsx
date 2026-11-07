@@ -29,7 +29,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       lang="pt-BR"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className={`${geistSans.variable} ${geistMono.variable} bg-black`}>
+      <body className={`${geistSans.variable} ${geistMono.variable} bg-background text-foreground`}>
         <Hydrate>
           <Navbar/>
           <main className=" h-screen p-16">{children}</main>
