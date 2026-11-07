@@ -380,14 +380,14 @@ const BAR_HI = "M38,63.5 Q71,49.5 100,39.5 Q129,49.5 162,63.5";
 
 function Hook({ uid }: { uid: string }) {
   return (
-    <>
+    <g transform="translate(0 11)">
       <path d={HOOK} fill="none" stroke="black" strokeOpacity="0.28" strokeWidth="3.4" strokeLinecap="round" transform="translate(0.9 1.1)" />
       <path d={HOOK} fill="none" stroke={`url(#${uid}-chrome)`} strokeWidth="2.6" strokeLinecap="round" />
       <path d={HOOK_HI} fill="none" stroke="white" strokeOpacity="0.6" strokeWidth="0.6" strokeLinecap="round" />
       <ellipse cx="105.9" cy="0.6" rx="1.9" ry="0.9" fill="black" fillOpacity="0.4" />
       <rect x="96" y="27" width="8" height="9" rx="2" fill={`url(#${uid}-chrome)`} />
       <rect x="97.2" y="28.2" width="2" height="6.6" rx="1" fill="white" fillOpacity="0.5" />
-    </>
+    </g>
   );
 }
 
