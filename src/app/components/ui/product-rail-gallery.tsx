@@ -392,7 +392,8 @@ function Hook({ uid }: { uid: string }) {
   );
 }
 
-function Hanger({ uid, side, kind, material }: { uid: string; side: "front" | "back"; kind: GarmentKind | null; material: "wood" | "matte" | "none" }) {
+// 1. Apenas a Haste (Fica por baixo da camisa)
+function HangerBack({ uid, side, kind, material }: { uid: string; side: "front" | "back"; kind: GarmentKind | null; material: "wood" | "matte" | "none" }) {
   const art = kind ? artFor(kind, side) : null;
   const bar = material === "wood" ? `url(#${uid}-wood)` : "currentColor";
   return (
@@ -406,13 +407,23 @@ function Hanger({ uid, side, kind, material }: { uid: string; side: "front" | "b
           <path d={BAR} fill="none" stroke={bar} strokeWidth="8.5" strokeLinecap="round" />
           {material === "wood" && <path d={BAR} fill="none" stroke={`url(#${uid}-woodgrain)`} strokeWidth="8.5" strokeLinecap="round" />}
           <path d={BAR_HI} fill="none" stroke="white" strokeOpacity={material === "wood" ? 0.3 : 0.14} strokeWidth="1.1" strokeLinecap="round" />
-          <Hook uid={uid} />
         </>
       )}
     </svg>
   );
 }
 
+// 2. Apenas o Gancho (Fica por cima da gola da camisa)
+function HangerHook({ uid, material }: { uid: string; material: "wood" | "matte" | "none" }) {
+  if (material === "none") return null;
+  return (
+    <svg aria-hidden="true" viewBox={`0 0 ${VB_W} ${VB_H}`} preserveAspectRatio="xMidYMin meet" className="absolute inset-0 size-full overflow-visible">
+      <Hook uid={uid} />
+    </svg>
+  );
+}
+
+// (Mantido para compatibilidade com o modo lado)
 function SideHanger({ uid, material }: { uid: string; material: "wood" | "matte" | "none" }) {
   if (material === "none") return null;
   const bar = material === "wood" ? `url(#${uid}-wood)` : "currentColor";
@@ -1030,17 +1041,30 @@ export function ClothingRailHero({
                   </span>
                 )}
                 <span ref={(node) => { turns.current[i] = node; }} data-turn className="absolute inset-0 rounded-lg [transform-style:preserve-3d]" style={{ transform: `perspective(${PERSPECTIVE}px) rotateY(${REST}deg)`, opacity: item.image && !item.sideImage ? 1 : 0 }}>
-                  {(["front", "back"] as const).map((side) => (
-                    <span key={side} data-face={side} className="absolute inset-0 [backface-visibility:hidden]" style={{ transform: side === "back" ? "rotateY(180deg)" : undefined, ["--garment-color" as string]: color, ["--garment-under" as string]: mix(color, -0.42) }}>
-                      <Hanger uid={uid} side={side} kind={item.image ? null : kind} material={hanger} />
-                      <span ref={side === "front" ? (node) => { drapes.current[i] = node; } : undefined} data-drape className="absolute inset-0 origin-top [transform:skewX(var(--drape,0deg))]" style={side === "back" ? { transform: "skewX(calc(var(--drape, 0deg) * -1))" } : undefined}>
-                        {item.image
-                          ? <Photo src={side === "back" ? (item.backImage ?? item.image) : item.image} alt="" full={hanger === "none"}/>
-                          : <Fabric uid={uid} kind={kind} side={side} color={color} trim={trim} />}
-                        <span ref={side === "front" ? (node) => { shades.current[i] = node; } : undefined} className={`pointer-events-none absolute bg-black ${item.image ? photoBox : "inset-0"}`} style={{ opacity: "var(--shade, 0.2)", WebkitMask: `${item.image ? `url("${(side === "back" ? item.backImage : undefined) ?? item.image}")` : silhouetteMask(kind, side)} top center / contain no-repeat`, mask: `${item.image ? `url("${(side === "back" ? item.backImage : undefined) ?? item.image}")` : silhouetteMask(kind, side)} top center / contain no-repeat` }} />
+                  {(["front", "back"] as const).map((side) => {
+                    const garmentIndex = i; // Guarda o índice do item no escopo seguro
+                    const drapeRef = drapes; 
+                    const shadeRef = shades;
+                    const pBox = photoBox;
+
+                    return (
+                      <span key={side} data-face={side} className="absolute inset-0 [backface-visibility:hidden]" style={{ transform: side === "back" ? "rotateY(180deg)" : undefined, ["--garment-color" as string]: color, ["--garment-under" as string]: mix(color, -0.42) }}>
+                        
+                        {/* Haste do cabide fica atrás do tecido */}
+                        <HangerBack uid={uid} side={side} kind={item.image ? null : kind} material={hanger} />
+                        
+                        <span ref={side === "front" ? (node) => { drapeRef.current[garmentIndex] = node; } : undefined} data-drape className="absolute inset-0 origin-top [transform:skewX(var(--drape,0deg))]" style={side === "back" ? { transform: "skewX(calc(var(--drape, 0deg) * -1))" } : undefined}>
+                          {item.image
+                            ? <Photo src={side === "back" ? (item.backImage ?? item.image) : item.image} alt="" full={hanger === "none"} />
+                            : <Fabric uid={uid} kind={kind} side={side} color={color} trim={trim} />}
+                          <span ref={side === "front" ? (node) => { shadeRef.current[garmentIndex] = node; } : undefined} className={`pointer-events-none absolute bg-black ${item.image ? pBox : "inset-0"}`} style={{ opacity: "var(--shade, 0.2)", WebkitMask: `${item.image ? `url("${(side === "back" ? item.backImage : undefined) ?? item.image}")` : silhouetteMask(kind, side)} top center / contain no-repeat`, mask: `${item.image ? `url("${(side === "back" ? item.backImage : undefined) ?? item.image}")` : silhouetteMask(kind, side)} top center / contain no-repeat` }} />
+                        </span>
+
+                        {/* Gancho do cabide sai por cima da gola */}
+                        <HangerHook uid={uid} material={hanger} />
                       </span>
-                    </span>
-                  ))}
+                    );
+                  })}
                 </span>
                 {item.tag && (
                   <span ref={(node) => { tags.current[i] = node; }} aria-hidden="true" className="pointer-events-none absolute left-1/2 origin-top" style={{ top: (32 / VB_H) * h, transform: "rotate(-12deg)" }}>
@@ -1209,7 +1233,7 @@ function Detail({ uid, item, index, total, hanger, labels, reduced, source, onLi
     else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
   };
 
-  const stage = (
+ const stage = (
     <div ref={figureRef} className="relative mx-auto aspect-[200/310] h-[min(62vh,560px)] max-h-full origin-top">
       <div aria-hidden="true" className="absolute left-1/2 top-[-40vh] h-[40vh] w-[3px] -translate-x-1/2 rounded-full" style={{ background: "linear-gradient(to right, color-mix(in oklab, var(--color-muted-foreground) 50%, white), var(--color-muted-foreground), color-mix(in oklab, var(--color-muted-foreground) 50%, black))", top: `calc(-40vh + ${(HOOK_TOP / VB_H) * 100}%)` }} />
       <div
@@ -1223,17 +1247,23 @@ function Detail({ uid, item, index, total, hanger, labels, reduced, source, onLi
         <div ref={spinRef} className="absolute inset-0 [transform-style:preserve-3d]">
           {(["front", "back"] as const).map((face) => (
             <div key={face} className="absolute inset-0 [backface-visibility:hidden]" style={{ transform: face === "back" ? "rotateY(180deg)" : undefined, ["--garment-color" as string]: color, ["--garment-under" as string]: mix(color, -0.42) }}>
-              <Hanger uid={uid} side={face} kind={item.image ? null : kind} material={hanger} />
+              
+              {/* 1. Haste do cabide atrás da foto no detalhe */}
+              <HangerBack uid={uid} side={face} kind={item.image ? null : kind} material={hanger} />
+              
               {item.image
                 ? <Photo src={(face === "back" ? item.backImage : undefined) ?? item.image} alt={face === "front" ? item.name : ""} full={hanger === "none"} />
                 : <Fabric uid={uid} kind={kind} side={face} color={color} trim={trim} />}
+              
+              {/* 2. Gancho do cabide à frente da foto no detalhe */}
+              <HangerHook uid={uid} material={hanger} />
+              
             </div>
           ))}
         </div>
       </div>
     </div>
   );
-
   return createPortal(
     <div ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby={titleId} className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto p-6 text-foreground" onKeyDown={onKeyDown}>
       <div aria-hidden="true" className={`absolute inset-0 bg-background/90 backdrop-blur-xl transition-opacity duration-300 motion-reduce:transition-none ${shown ? "opacity-100" : "opacity-0"}`} onClick={dismiss} />
