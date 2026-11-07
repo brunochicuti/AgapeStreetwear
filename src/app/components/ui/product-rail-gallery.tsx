@@ -513,7 +513,7 @@ function SideArt({ uid, kind, color, trim }: { uid: string; kind: GarmentKind; c
 }
 
 function Photo({ src, alt, full }: { src: string; alt: string; full: boolean }) {
-  return <img src={src} alt={alt} draggable={false} className={`pointer-events-none absolute inset-x-0 bottom-0 size-auto w-full select-none object-contain object-top ${full ? "top-0 h-full" : "top-[8%] h-[92%]"}`} />;
+  return <img src={src} alt={alt} draggable={false} className={`pointer-events-none absolute left-1/2 w-auto max-w-none -translate-x-1/2 select-none object-contain object-top ${full ? "top-0 h-full" : "top-[5%] h-[90%]"}`} />;
 }
 
 type Sim = {
