@@ -51,7 +51,7 @@ export default function ClothingRailHeroDemo({
 
       <ClothingRailHero
         items={items}
-        hanger="none"
+        hanger="wood"
         eyebrow="Loja Ágape"
         heading="Arara de Produtos"
         caption="Passe o cursor e clique na peça para ver os detalhes e as diferentes vistas."

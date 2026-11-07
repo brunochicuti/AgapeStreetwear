@@ -53,6 +53,15 @@ export interface ClothingRailHeroProps extends React.ComponentProps<"section"> {
   onOpenChange?: (index: number | null) => void;
 }
 
+/** Cor da etiqueta conforme o texto. */
+function tagTone(tag: string) {
+  if (/esgot/i.test(tag)) return "border-transparent bg-neutral-500 text-white/80 line-through decoration-white/60";
+  if (/[uú]ltim/i.test(tag)) return "border-transparent bg-[#E01E2B] text-white";
+  if (/mais vendido/i.test(tag)) return "border-[#E01E2B] bg-white text-[#E01E2B]";
+  if (/novo/i.test(tag)) return "border-transparent bg-black text-white";
+  return "border-black/10 bg-white text-black";
+}
+
 const VB_W = 200;
 const VB_H = 310;
 const ASPECT = VB_W / VB_H;
@@ -513,7 +522,7 @@ function SideArt({ uid, kind, color, trim }: { uid: string; kind: GarmentKind; c
 }
 
 function Photo({ src, alt, full }: { src: string; alt: string; full: boolean }) {
-  return <img src={src} alt={alt} draggable={false} className={`pointer-events-none absolute left-1/2 w-auto max-w-none -translate-x-1/2 select-none object-contain object-top ${full ? "top-0 h-full" : "top-[5%] h-[90%]"}`} />;
+  return <img src={src} alt={alt} draggable={false} className={`pointer-events-none absolute left-1/2 w-auto max-w-none -translate-x-1/2 select-none object-contain object-top ${full ? "top-0 h-full" : "top-[8%] h-[92%]"}`} />;
 }
 
 type Sim = {
@@ -1029,7 +1038,7 @@ export function ClothingRailHero({
                 {item.tag && (
                   <span ref={(node) => { tags.current[i] = node; }} aria-hidden="true" className="pointer-events-none absolute left-1/2 origin-top" style={{ top: (32 / VB_H) * h, transform: "rotate(-12deg)" }}>
                     <span className="block h-[14px] w-px translate-x-[3px] bg-foreground/35" />
-                    <span className="block -translate-x-1/2 translate-x-[3px] whitespace-nowrap rounded-[3px] border border-foreground/10 bg-card px-1.5 pb-1 pt-2 text-[9px] font-semibold leading-none tracking-wide text-card-foreground shadow-[0_2px_6px_color-mix(in_oklab,var(--color-foreground)_18%,transparent)]">
+                    <span className={`block -translate-x-1/2 translate-x-[3px] whitespace-nowrap rounded-[3px] border px-2 pb-1.5 pt-2.5 text-[10px] font-bold uppercase leading-none tracking-wider shadow-[0_2px_6px_rgba(0,0,0,0.25)] ${tagTone(item.tag)}`}>
                       <span className="absolute left-1/2 top-[3px] size-[3px] -translate-x-1/2 rounded-full bg-foreground/30" />
                       {item.tag}
                     </span>
