@@ -2,6 +2,7 @@ import { ProductType } from "@/src/types/ProductType";
 import Product from "./components/Product";
 import ClosetAgape from "./components/ClothingRailDemo";
 import Stripe from "stripe";
+import { cacheLife } from "next/cache";
 
 /**
  * Etiqueta da peça (aparece pendurada na arara e no card).
@@ -27,7 +28,10 @@ function calcularEtiqueta(product: Stripe.Product): string | undefined {
   return undefined;
 }
 
-async function getProducts(): Promise<ProductType[]> {
+  async function getProducts(): Promise<ProductType[]> {
+  "use cache";
+  cacheLife("minutes");
+
   const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
     apiVersion: "2026-09-30.endive",
   });
