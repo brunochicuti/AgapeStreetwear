@@ -512,31 +512,8 @@ function SideArt({ uid, kind, color, trim }: { uid: string; kind: GarmentKind; c
   );
 }
 
-function Photo({ src, alt, full, back = false }: {
-  src: string;
-  alt: string;
-  full: boolean;
-  back?: boolean;
-}) {
-  return (
-    <img
-      src={src}
-      alt={alt}
-      draggable={false}
-      className={`pointer-events-none absolute bottom-0 size-auto select-none object-contain object-top ${
-        full 
-          ? "top-0 h-full" 
-          : back 
-            ? "top-[2%] h-[95%]" // <-- Ajusta aqui a altura e o topo só para as costas
-            : "top-[5%] h-[90%]"  // <-- Tamanho para a frente
-      }`}
-      style={{
-        width: back ? "96%" : "94%",    // <-- Ajusta aqui a largura só para as costas
-        left: back ? "2%" : "3%",     // <-- Ajusta aqui a posição horizontal só para as costas
-        maxWidth: "none",
-      }}
-    />
-  );
+function Photo({ src, alt, full }: { src: string; alt: string; full: boolean }) {
+ return <img src={src} alt={alt} draggable={false} className={`pointer-events-none absolute inset-x-0 bottom-0 size-auto select-none object-cover object-top ${full ? "top-0 h-full w-full" : "top-[5%] h-[90%] w-[110%] left-0"}`} />;
 }
 
 type Sim = {
@@ -1042,7 +1019,7 @@ export function ClothingRailHero({
                       <Hanger uid={uid} side={side} kind={item.image ? null : kind} material={hanger} />
                       <span ref={side === "front" ? (node) => { drapes.current[i] = node; } : undefined} data-drape className="absolute inset-0 origin-top [transform:skewX(var(--drape,0deg))]" style={side === "back" ? { transform: "skewX(calc(var(--drape, 0deg) * -1))" } : undefined}>
                         {item.image
-                          ? <Photo src={side === "back" ? (item.backImage ?? item.image) : item.image} alt="" full={hanger === "none"} back={side === "back"}/>
+                          ? <Photo src={side === "back" ? (item.backImage ?? item.image) : item.image} alt="" full={hanger === "none"}/>
                           : <Fabric uid={uid} kind={kind} side={side} color={color} trim={trim} />}
                         <span ref={side === "front" ? (node) => { shades.current[i] = node; } : undefined} className={`pointer-events-none absolute bg-black ${item.image ? photoBox : "inset-0"}`} style={{ opacity: "var(--shade, 0.2)", WebkitMask: `${item.image ? `url("${(side === "back" ? item.backImage : undefined) ?? item.image}")` : silhouetteMask(kind, side)} top center / contain no-repeat`, mask: `${item.image ? `url("${(side === "back" ? item.backImage : undefined) ?? item.image}")` : silhouetteMask(kind, side)} top center / contain no-repeat` }} />
                       </span>
