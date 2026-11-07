@@ -128,7 +128,17 @@ export const RAIL_DEMO_ITEMS: RailGarment[] = [
 
 export default function ClothingRailHeroDemo({ autoplay = true }: { autoplay?: boolean }) {
   return (
-    <div data-rail-demo className="flex min-h-svh w-full items-center justify-center bg-background text-foreground">
+    <div 
+      data-rail-demo 
+      className="relative flex min-h-svh w-full items-center justify-center overflow-hidden text-foreground"
+      style={{ background: "radial-gradient(circle at 50% 25%, #1a1a1c 0%, #0d0d0f 60%, #000000 100%)" }}
+    >
+      {/* Brilho ambiente difuso ao fundo para dar um toque sofisticado */}
+      <div 
+        aria-hidden="true" 
+        className="pointer-events-none absolute left-1/2 top-1/3 -translate-x-1/2 -translate-y-1/2 size-[600px] rounded-full bg-neutral-800/20 blur-[150px]" 
+      />
+
       <ClothingRailHero
         items={RAIL_DEMO_ITEMS}
         hanger="none"
