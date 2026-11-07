@@ -406,12 +406,21 @@ function HangerBack({ uid, side, kind, material }: { uid: string; side: "front" 
       {art?.hood && <path d={art.hood} fill="black" fillOpacity="0.22" />}
       {art?.under && <path d={art.under} fill="var(--garment-under)" />}
       {material !== "none" && (
-        <>
-          <path d={BAR} fill="none" stroke="black" strokeOpacity="0.25" strokeWidth="9.5" strokeLinecap="round" transform="translate(0.6 1.6)" />
-          <path d={BAR} fill="none" stroke={bar} strokeWidth="8.5" strokeLinecap="round" />
-          {material === "wood" && <path d={BAR} fill="none" stroke={`url(#${uid}-woodgrain)`} strokeWidth="8.5" strokeLinecap="round" />}
-          <path d={BAR_HI} fill="none" stroke="white" strokeOpacity={material === "wood" ? 0.3 : 0.14} strokeWidth="1.1" strokeLinecap="round" />
-        </>
+        <g>
+          {/* A máscara esconde o centro do cabide (onde a gola da frente passa por cima) */}
+          <mask id={`${uid}-collar-mask`}>
+            <rect width={VB_W} height={VB_H} fill="white" />
+            {/* O retângulo preto apaga o trecho central da madeira para a gola cobri-lo */}
+            <rect x="72" y="30" width="56" height="30" fill="black" />
+          </mask>
+
+          <g mask={`url(#${uid}-collar-mask)`}>
+            <path d={BAR} fill="none" stroke="black" strokeOpacity="0.25" strokeWidth="9.5" strokeLinecap="round" transform="translate(0.6 1.6)" />
+            <path d={BAR} fill="none" stroke={bar} strokeWidth="8.5" strokeLinecap="round" />
+            {material === "wood" && <path d={BAR} fill="none" stroke={`url(#${uid}-woodgrain)`} strokeWidth="8.5" strokeLinecap="round" />}
+            <path d={BAR_HI} fill="none" stroke="white" strokeOpacity={material === "wood" ? 0.3 : 0.14} strokeWidth="1.1" strokeLinecap="round" />
+          </g>
+        </g>
       )}
     </svg>
   );
