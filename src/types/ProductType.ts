@@ -6,4 +6,5 @@ export type ProductType ={
     image:string;
     description:string | null;
     currency?:string;
+    etiqueta?: string | null;
 }
