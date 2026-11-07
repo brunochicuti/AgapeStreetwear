@@ -340,7 +340,6 @@ function Defs({ uid }: { uid: string }) {
           <stop offset="0.78" stopColor="color-mix(in oklab, gray 65%, black)" />
           <stop offset="1" stopColor="color-mix(in oklab, gray 75%, white)" />
         </linearGradient>
-        {/* Gradientes e brilhos adicionados para o tubo metálico da arara */}
         <linearGradient id="rail-tubing" x1="0%" y1="0%" x2="0%" y2="100%">
           <stop offset="0%" stopColor="#2a2a2a" />
           <stop offset="30%" stopColor="#7a7a7a" />
@@ -392,7 +391,7 @@ function Hook({ uid }: { uid: string }) {
   );
 }
 
-// 1. Apenas a Haste (Fica por baixo da camisa)
+// Haste de madeira do cabide (renderizada por cima da t-shirt para aparecer corretamente na gola)
 function HangerBack({ uid, side, kind, material }: { uid: string; side: "front" | "back"; kind: GarmentKind | null; material: "wood" | "matte" | "none" }) {
   const art = kind ? artFor(kind, side) : null;
   const bar = material === "wood" ? `url(#${uid}-wood)` : "currentColor";
@@ -401,8 +400,7 @@ function HangerBack({ uid, side, kind, material }: { uid: string; side: "front" 
       aria-hidden="true" 
       viewBox={`0 0 ${VB_W} ${VB_H}`} 
       preserveAspectRatio="xMidYMin meet" 
-      className={`absolute inset-0 size-full overflow-visible ${material === "matte" ? "text-foreground/85" : ""}`}
-      style={{ transform: "translateY(18px)" }} // <-- Desce o corpo de madeira para dentro da gola
+      className={`absolute inset-0 size-full overflow-visible pointer-events-none ${material === "matte" ? "text-foreground/85" : ""}`}
     >
       {art?.hood && <path d={art.hood} fill="var(--garment-color)" />}
       {art?.hood && <path d={art.hood} fill="black" fillOpacity="0.22" />}
@@ -419,17 +417,16 @@ function HangerBack({ uid, side, kind, material }: { uid: string; side: "front" 
   );
 }
 
-// 2. Apenas o Gancho (Fica por cima da gola da camisa)
+// Gancho do cabide no topo
 function HangerHook({ uid, material }: { uid: string; material: "wood" | "matte" | "none" }) {
   if (material === "none") return null;
   return (
-    <svg aria-hidden="true" viewBox={`0 0 ${VB_W} ${VB_H}`} preserveAspectRatio="xMidYMin meet" className="absolute inset-0 size-full overflow-visible">
+    <svg aria-hidden="true" viewBox={`0 0 ${VB_W} ${VB_H}`} preserveAspectRatio="xMidYMin meet" className="absolute inset-0 size-full overflow-visible pointer-events-none">
       <Hook uid={uid} />
     </svg>
   );
 }
 
-// (Mantido para compatibilidade com o modo lado)
 function SideHanger({ uid, material }: { uid: string; material: "wood" | "matte" | "none" }) {
   if (material === "none") return null;
   const bar = material === "wood" ? `url(#${uid}-wood)` : "currentColor";
@@ -538,10 +535,7 @@ function SideArt({ uid, kind, color, trim }: { uid: string; kind: GarmentKind; c
   );
 }
 
-// Onde a foto começa quando o cabide é desenhado (em % da altura da peça).
-// Menor = a camiseta sobe e cobre mais o cabide. Maior = desce e deixa o cabide aparecer mais.
 const PHOTO_TOP = 15;
-// Mesma ideia, só para a foto de lado (sideImage). Menor = sobe e encosta no cabide.
 const PHOTO_TOP_SIDE = 3;
 const PHOTO_H = 87;
 
@@ -995,16 +989,11 @@ export function ClothingRailHero({
         onPointerLeave={(event) => { if (event.pointerType === "mouse" && pointer.current.id < 0 && !size.carousel && !document.activeElement?.matches("[data-garment]:focus-visible")) choose(null); }}
         onKeyDown={onKeyDown}
       >
-        {/* Nova Barra Metálica 3D Substituindo o antigo tracejado */}
         <div aria-hidden="true" data-rail className="pointer-events-none absolute inset-x-0 z-0" style={{ top: railY - railR, height: railR * 2 }}>
-          {/* Sombra suave projetada pela barra */}
           <div className="absolute inset-x-0 h-3 rounded-full bg-black/35 blur-[3px]" style={{ top: railR * 2 + 2 }} />
-          {/* Tubo Metálico Principal */}
           <div className="absolute inset-0 rounded-full" style={{ background: "url(#rail-tubing), linear-gradient(to bottom, #2a2a2a 0%, #7a7a7a 30%, #e8e8e8 50%, #555555 70%, #111111 100%)", boxShadow: "0 1px 3px rgba(0,0,0,0.4)" }} />
-          {/* Reflexo de luz superior no tubo (Efeito Cilíndrico 3D) */}
           <div className="absolute inset-x-0 top-0 h-[35%] rounded-t-full bg-gradient-to-b from-white/70 to-transparent" />
           
-          {/* Sordas / Suportes laterais da arara */}
           {[0, 1].map((side) => (
             <div key={side} className="absolute top-1/2 h-7 w-4 -translate-y-1/2 rounded-[3px]" style={{ [side ? "right" : "left"]: 6, background: "linear-gradient(to right, color-mix(in oklab, var(--color-muted-foreground) 60%, white), var(--color-muted-foreground) 55%, color-mix(in oklab, var(--color-muted-foreground) 60%, black))", boxShadow: "0 3px 6px color-mix(in oklab, var(--color-foreground) 18%, transparent)" }}>
               <span className="absolute left-1/2 top-1 size-1 -translate-x-1/2 rounded-full bg-foreground/35" />
@@ -1056,10 +1045,7 @@ export function ClothingRailHero({
                     return (
                         <span key={side} data-face={side} className="absolute inset-0 [backface-visibility:hidden]" style={{ transform: side === "back" ? "rotateY(180deg)" : undefined, ["--garment-color" as string]: color, ["--garment-under" as string]: mix(color, -0.42) }}>
                         
-                        {/* 1. Haste de madeira do cabide (fica no fundo) */}
-                        <HangerBack uid={uid} side={side} kind={item.image ? null : kind} material={hanger} />
-                        
-                        {/* 2. T-shirt/Foto desenhada POR CIMA da madeira, escondendo os ombros do cabide */}
+                        {/* 1. T-shirt/Foto desenhada primeiro na base */}
                         <span ref={side === "front" ? (node) => { drapeRef.current[garmentIndex] = node; } : undefined} data-drape className="absolute inset-0 origin-top [transform:skewX(var(--drape,0deg))]" style={side === "back" ? { transform: "skewX(calc(var(--drape, 0deg) * -1))" } : undefined}>
                             {item.image
                             ? <Photo src={side === "back" ? (item.backImage ?? item.image) : item.image} alt="" full={hanger === "none"} />
@@ -1067,7 +1053,10 @@ export function ClothingRailHero({
                             <span ref={side === "front" ? (node) => { shadeRef.current[garmentIndex] = node; } : undefined} className={`pointer-events-none absolute bg-black ${item.image ? pBox : "inset-0"}`} style={{ opacity: "var(--shade, 0.2)", WebkitMask: `${item.image ? `url("${(side === "back" ? item.backImage : undefined) ?? item.image}")` : silhouetteMask(kind, side)} top center / contain no-repeat`, mask: `${item.image ? `url("${(side === "back" ? item.backImage : undefined) ?? item.image}")` : silhouetteMask(kind, side)} top center / contain no-repeat` }} />
                         </span>
 
-                        {/* 3. Gancho do cabide fica no topo (sai de dentro da gola) */}
+                        {/* 2. Haste de madeira do cabide por cima da foto (encaixada por dentro da gola) */}
+                        <HangerBack uid={uid} side={side} kind={item.image ? null : kind} material={hanger} />
+
+                        {/* 3. Gancho do cabide no topo */}
                         <HangerHook uid={uid} material={hanger} />
                         </span>
                     );
@@ -1255,14 +1244,15 @@ function Detail({ uid, item, index, total, hanger, labels, reduced, source, onLi
           {(["front", "back"] as const).map((face) => (
             <div key={face} className="absolute inset-0 [backface-visibility:hidden]" style={{ transform: face === "back" ? "rotateY(180deg)" : undefined, ["--garment-color" as string]: color, ["--garment-under" as string]: mix(color, -0.42) }}>
               
-              {/* 1. Haste do cabide atrás da foto no detalhe */}
-              <HangerBack uid={uid} side={face} kind={item.image ? null : kind} material={hanger} />
-              
+              {/* 1. T-shirt/Foto na base no detalhe */}
               {item.image
                 ? <Photo src={(face === "back" ? item.backImage : undefined) ?? item.image} alt={face === "front" ? item.name : ""} full={hanger === "none"} />
                 : <Fabric uid={uid} kind={kind} side={face} color={color} trim={trim} />}
               
-              {/* 2. Gancho do cabide à frente da foto no detalhe */}
+              {/* 2. Haste de madeira do cabide por cima no detalhe */}
+              <HangerBack uid={uid} side={face} kind={item.image ? null : kind} material={hanger} />
+              
+              {/* 3. Gancho do cabide no topo */}
               <HangerHook uid={uid} material={hanger} />
               
             </div>
