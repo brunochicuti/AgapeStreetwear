@@ -524,11 +524,15 @@ function Photo({ src, alt, full, back = false }: {
       alt={alt}
       draggable={false}
       className={`pointer-events-none absolute bottom-0 size-auto select-none object-contain object-top ${
-        full ? "top-0 h-full" : "top-[5%] h-[90%]"
+        full 
+          ? "top-0 h-full" 
+          : back 
+            ? "top-[2%] h-[95%]" // <-- Ajusta aqui a altura e o topo só para as costas
+            : "top-[5%] h-[90%]"  // <-- Tamanho para a frente
       }`}
       style={{
-        width: back ? "100%" : "94%",
-        left: back ? "0" : "3%",
+        width: back ? "96%" : "94%",    // <-- Ajusta aqui a largura só para as costas
+        left: back ? "2%" : "3%",     // <-- Ajusta aqui a posição horizontal só para as costas
         maxWidth: "none",
       }}
     />
