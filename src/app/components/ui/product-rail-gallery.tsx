@@ -523,7 +523,7 @@ function SideArt({ uid, kind, color, trim }: { uid: string; kind: GarmentKind; c
 
 // Onde a foto começa quando o cabide é desenhado (em % da altura da peça).
 // Menor = a camiseta sobe e cobre mais o cabide. Maior = desce e deixa o cabide aparecer mais.
-const PHOTO_TOP = 10;
+const PHOTO_TOP = 12;
 // Mesma ideia, só para a foto de lado (sideImage). Menor = sobe e encosta no cabide.
 const PHOTO_TOP_SIDE = 3;
 const PHOTO_H = 87;
@@ -1002,7 +1002,7 @@ export function ClothingRailHero({
           const trim = item.trim ?? mix(color, -0.12);
           const turned = active === i;
           const mask = item.image ? `url("${item.image}")` : silhouetteMask(kind, "front");
-          const photoBox = hanger === "none" ? "inset-0" : "inset-x-0 bottom-0 top-[10%]";
+          const photoBox = hanger === "none" ? "inset-0" : "inset-x-0 bottom-0 top-[12%]";
           return (
             <button
               key={item.id}
