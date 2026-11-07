@@ -20,7 +20,7 @@ export default function ClothingRailHeroDemo({
     products.find((p) => p.id === id) ??
     products.find((p) => normalizar(p.name) === normalizar(nome));
 
-  const camisa = achar("prod_camisa_agape", "Camisa Ágape");
+  const camisa = achar("prod_VaAw48z5A45rud", "camisa");
 
   // Peças fixas daqui (com as fotos de frente, costas e lado em public/images/).
   // A etiqueta vem da Stripe: NOVO, ÚLTIMAS UNIDADES, ESGOTADO ou MAIS VENDIDO.
