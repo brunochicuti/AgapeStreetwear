@@ -1048,6 +1048,9 @@ export function ClothingRailHero({
                         {/* 1. Haste de madeira (fica na camada de trás da gola) */}
                         <HangerBack uid={uid} side={side} kind={item.image ? null : kind} material={hanger} />
 
+                        {/* 3. Gancho metálico no topo (sai por cima de tudo) */}
+                        <HangerHook uid={uid} material={hanger} />
+
                         {/* 2. Imagem da Camiseta (a gola da frente cobre a madeira central) */}
                         <span ref={side === "front" ? (node) => { drapeRef.current[garmentIndex] = node; } : undefined} data-drape className="absolute inset-0 origin-top [transform:skewX(var(--drape,0deg))]" style={side === "back" ? { transform: "skewX(calc(var(--drape, 0deg) * -1))" } : undefined}>
                             {item.image
@@ -1055,9 +1058,6 @@ export function ClothingRailHero({
                             : <Fabric uid={uid} kind={kind} side={side} color={color} trim={trim} />}
                             <span ref={side === "front" ? (node) => { shadeRef.current[garmentIndex] = node; } : undefined} className={`pointer-events-none absolute bg-black ${item.image ? pBox : "inset-0"}`} style={{ opacity: "var(--shade, 0.2)", WebkitMask: `${item.image ? `url("${(side === "back" ? item.backImage : undefined) ?? item.image}")` : silhouetteMask(kind, side)} top center / contain no-repeat`, mask: `${item.image ? `url("${(side === "back" ? item.backImage : undefined) ?? item.image}")` : silhouetteMask(kind, side)} top center / contain no-repeat` }} />
                         </span>
-
-                        {/* 3. Gancho metálico no topo (sai por cima de tudo) */}
-                        <HangerHook uid={uid} material={hanger} />
                         </span>
                     );
                     })}
