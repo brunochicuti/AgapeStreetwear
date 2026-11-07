@@ -22,6 +22,8 @@ export interface RailGarment {
   backImage?: string;
   /** Side-on photo shown while the piece rests on the rail; omit to show the front photo turned away. */
   sideImage?: string;
+  /** Peça esgotada: continua na arara, mas não abre os detalhes. */
+  soldOut?: boolean;
   /** Short hang-tag text such as a price or a size. */
   tag?: string;
   /** Short facts listed in the detail view. */
@@ -51,6 +53,17 @@ export interface ClothingRailHeroProps extends React.ComponentProps<"section"> {
   hanger?: "wood" | "matte" | "none";
   labels?: ClothingRailHeroLabels;
   onOpenChange?: (index: number | null) => void;
+  /** Botão "Adicionar à sacola" na tela de detalhes. */
+  onAddToCart?: (item: RailGarment) => void;
+}
+
+/** Cor da etiqueta conforme o status (NOVO, ÚLTIMAS UNIDADES, ESGOTADO ou qualquer texto). */
+function tagTone(tag: string) {
+  if (/esgot/i.test(tag)) return "border-transparent bg-neutral-500 text-white/80 line-through decoration-white/60";
+  if (/[uú]ltim/i.test(tag)) return "border-transparent bg-[#E01E2B] text-white";
+  if (/mais vendido/i.test(tag)) return "border-[#E01E2B] bg-white text-[#E01E2B]";
+  if (/novo/i.test(tag)) return "border-transparent bg-black text-white";
+  return "border-black/10 bg-white text-black";
 }
 
 const VB_W = 200;
@@ -545,6 +558,7 @@ export function ClothingRailHero({
   hanger = "wood",
   labels = DEFAULT_LABELS,
   onOpenChange,
+  onAddToCart,
   className,
   ...rest
 }: ClothingRailHeroProps) {
@@ -798,11 +812,12 @@ export function ClothingRailHero({
   }, [playing, reduced, openIndex, count, interval, size.width, choose, active]);
 
   const open = React.useCallback((index: number) => {
+    if (items[index]?.soldOut) return;
     stop();
     setActive(index);
     setOpenIndex(index);
     onOpenChange?.(index);
-  }, [onOpenChange, stop]);
+  }, [onOpenChange, stop, items]);
 
   const close = React.useCallback(() => {
     setOpenIndex(null);
@@ -998,7 +1013,8 @@ export function ClothingRailHero({
               aria-label={item.name}
               aria-describedby={`${uid}-caption`}
               aria-pressed={turned}
-              className="absolute left-0 cursor-pointer rounded-xl outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring"
+              aria-disabled={item.soldOut || undefined}
+              className={`absolute left-0 ${item.soldOut ? "cursor-not-allowed" : "cursor-pointer"} rounded-xl outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring`}
               style={{ top: railY - (HOOK_TOP / VB_H) * h, width: boxW, height: h, zIndex: turned ? 30 : 10 + i, visibility: lifted === i ? "hidden" : undefined, transform: `translate3d(${((sim.current.x[i] ?? 0) - boxW / 2).toFixed(2)}px,0,0)` }}
               onFocus={() => { setFocusIndex(i); if (pointer.current.id < 0) { stop(); choose(i); } }}
               onClick={(event) => { const pending = pendingOpen.current; pendingOpen.current = -1; if (event.detail === 0 || pending === i) open(i); }}
@@ -1029,7 +1045,7 @@ export function ClothingRailHero({
                 {item.tag && (
                   <span ref={(node) => { tags.current[i] = node; }} aria-hidden="true" className="pointer-events-none absolute left-1/2 origin-top" style={{ top: (32 / VB_H) * h, transform: "rotate(-12deg)" }}>
                     <span className="block h-[14px] w-px translate-x-[3px] bg-foreground/35" />
-                    <span className="block -translate-x-1/2 translate-x-[3px] whitespace-nowrap rounded-[3px] border border-foreground/10 bg-card px-1.5 pb-1 pt-2 text-[9px] font-semibold leading-none tracking-wide text-card-foreground shadow-[0_2px_6px_color-mix(in_oklab,var(--color-foreground)_18%,transparent)]">
+                    <span className={`block -translate-x-1/2 translate-x-[3px] whitespace-nowrap rounded-[3px] border px-2 pb-1.5 pt-2.5 text-[10px] font-bold uppercase leading-none tracking-wider shadow-[0_2px_6px_rgba(0,0,0,0.25)] ${tagTone(item.tag)}`}>
                       <span className="absolute left-1/2 top-[3px] size-[3px] -translate-x-1/2 rounded-full bg-foreground/30" />
                       {item.tag}
                     </span>
@@ -1068,6 +1084,7 @@ export function ClothingRailHero({
           reduced={reduced}
           source={() => turns.current[openIndex]?.getBoundingClientRect() ?? null}
           onLift={(lift) => setLifted(lift ? openIndex : null)}
+          onAddToCart={onAddToCart}
           onClose={() => { const index = openIndex; returnFocus.current = index; close(); impulse(index, (index % 2 ? 1 : -1) * 44); }}
         />
       )}
@@ -1075,7 +1092,7 @@ export function ClothingRailHero({
   );
 }
 
-function Detail({ uid, item, index, total, hanger, labels, reduced, source, onLift, onClose }: {
+function Detail({ uid, item, index, total, hanger, labels, reduced, source, onLift, onAddToCart, onClose }: {
   uid: string;
   item: RailGarment;
   index: number;
@@ -1085,6 +1102,7 @@ function Detail({ uid, item, index, total, hanger, labels, reduced, source, onLi
   reduced: boolean;
   source: () => DOMRect | null;
   onLift: (lifted: boolean) => void;
+  onAddToCart?: (item: RailGarment) => void;
   onClose: () => void;
 }) {
   const dialogRef = React.useRef(null as HTMLDivElement | null);
@@ -1244,6 +1262,11 @@ function Detail({ uid, item, index, total, hanger, labels, reduced, source, onLi
               </button>
             ))}
           </div>
+          {onAddToCart && !item.soldOut && (
+            <button type="button" onClick={() => onAddToCart(item)} className="mt-4 inline-flex min-h-12 w-full items-center justify-center rounded-full bg-foreground px-6 py-3 text-sm font-medium text-background transition-opacity hover:opacity-85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+              Adicionar à sacola
+            </button>
+          )}
         </div>
       </div>
     </div>,
