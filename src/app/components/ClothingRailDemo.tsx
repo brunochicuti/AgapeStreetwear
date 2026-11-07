@@ -2,10 +2,28 @@
 
 import ClothingRailHero from "./ui/product-rail-gallery";
 import type { RailGarment } from "./ui/product-rail-gallery";
-import { formatPrice } from "@/src/lib/utils";
+import { ProductType } from "@/src/types/ProductType";
 
-export default function ClothingRailHeroDemo({ autoplay = true }: { autoplay?: boolean }) {
-  // Definimos os produtos diretamente aqui, usando as imagens que puseste na pasta public/images/
+// Normaliza o nome para comparar ("Camisa Ágape" = "camisa agape").
+const normalizar = (texto: string) =>
+  texto.normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase();
+
+export default function ClothingRailHeroDemo({
+  products = [],
+  autoplay = true,
+}: {
+  products?: ProductType[];
+  autoplay?: boolean;
+}) {
+  // Acha o produto da Stripe que corresponde a uma peça daqui (pelo id ou pelo nome).
+  const achar = (id: string, nome: string) =>
+    products.find((p) => p.id === id) ??
+    products.find((p) => normalizar(p.name) === normalizar(nome));
+
+  const camisa = achar("prod_camisa_agape", "Camisa Ágape");
+
+  // Peças fixas daqui (com as fotos de frente, costas e lado em public/images/).
+  // A etiqueta vem da Stripe: NOVO, ÚLTIMAS UNIDADES, ESGOTADO ou MAIS VENDIDO.
   const items: RailGarment[] = [
     {
       id: "prod_camisa_agape",
@@ -13,22 +31,22 @@ export default function ClothingRailHeroDemo({ autoplay = true }: { autoplay?: b
       description: "Camisa exclusiva com visual frente, costas e lado.",
       kind: "tee",
       color: "#EFEBE2",
-      tag: formatPrice(150), // Podes ajustar o preço aqui
-      image: "/images/camisa_agape_frente.png", // Substitui pelo nome exato da tua foto da frente na pasta public/images/
+      tag: camisa?.etiqueta ?? undefined,
+      image: "/images/camisa_agape_frente.png",
       backImage: "/images/camisa_agape_costas.png",
       sideImage: "/images/camisa_agape_lado.png",
     },
   ];
 
   return (
-    <div 
-      data-rail-demo 
+    <div
+      data-rail-demo
       className="relative flex min-h-svh w-full items-center justify-center overflow-hidden text-foreground"
       style={{ background: "radial-gradient(circle at 50% 25%, #1a1a1c 0%, #0d0d0f 60%, #000000 100%)" }}
     >
-      <div 
-        aria-hidden="true" 
-        className="pointer-events-none absolute left-1/2 top-1/3 -translate-x-1/2 -translate-y-1/2 size-[600px] rounded-full bg-neutral-800/20 blur-[150px]" 
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute left-1/2 top-1/3 -translate-x-1/2 -translate-y-1/2 size-[600px] rounded-full bg-neutral-800/20 blur-[150px]"
       />
 
       <ClothingRailHero
