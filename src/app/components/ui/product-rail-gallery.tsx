@@ -376,7 +376,7 @@ function Defs({ uid }: { uid: string }) {
 
 const HOOK = "M100,36 L100,-0.4 C100,-3.4 102.2,-4.2 103.9,-2.8 C104.9,-2 105.4,-1.2 105.6,-0.2";
 const HOOK_HI = "M99.5,30 L99.5,-0.2 C99.5,-2.4 101,-3.2 102.4,-2.6";
-const BAR = "M38,57 Q70,38 100,36 Q130,38 162,57";
+const BAR = "M42,50 Q70,32 100,30 Q130,32 158,50";
 const BAR_HI = "M40,54.5 Q71,35.5 100,33.5 Q129,35.5 160,54.5";
 
 function Hook({ uid }: { uid: string }) {
@@ -534,7 +534,7 @@ function SideArt({ uid, kind, color, trim }: { uid: string; kind: GarmentKind; c
 
 // Onde a foto começa quando o cabide é desenhado (em % da altura da peça).
 // Menor = a camiseta sobe e cobre mais o cabide. Maior = desce e deixa o cabide aparecer mais.
-const PHOTO_TOP = 8;
+const PHOTO_TOP = 15;
 // Mesma ideia, só para a foto de lado (sideImage). Menor = sobe e encosta no cabide.
 const PHOTO_TOP_SIDE = 3;
 const PHOTO_H = 87;
