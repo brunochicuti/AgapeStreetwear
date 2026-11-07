@@ -38,10 +38,10 @@ export default function ClothingRailHeroDemo({
     },
   ];
 
-  return (
+return (
       <div
         data-rail-demo
-        className="relative w-full min-h-screen flex flex-col justify-between overflow-hidden text-foreground bg-background"
+        className="relative w-full min-h-screen flex flex-col justify-between overflow-hidden text-foreground bg-transparent"
       >
         <ClothingRailHero
           items={items}
