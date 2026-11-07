@@ -518,7 +518,22 @@ function Photo({ src, alt, full, back = false }: {
   full: boolean;
   back?: boolean;
 }) {
-  return <img src={src} alt={alt} draggable={false} className={`pointer-events-none absolute inset-x-0 bottom-0 size-auto select-none object-contain object-top ${full ? "top-0 h-full w-full" : "top-[2%] h-[96%] w-full left-0"} ${back ? "scale-[1.15]" : ""}`} />;
+  return (
+  <img
+    src={src}
+    alt={alt}
+    draggable={false}
+    className={`pointer-events-none absolute bottom-0 select-none object-contain object-top ${
+      full ? "top-0 h-full" : "top-[2%] h-[96%]"
+    }`}
+    style={{
+      width: back ? "115%" : "100%",
+      height: back ? "115%" : undefined,
+      left: back ? "-7.5%" : "0",
+      maxWidth: "none",
+    }}
+  />
+);
 }
 
 type Sim = {
