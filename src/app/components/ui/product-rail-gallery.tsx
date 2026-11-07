@@ -1042,29 +1042,30 @@ export function ClothingRailHero({
                 )}
                 <span ref={(node) => { turns.current[i] = node; }} data-turn className="absolute inset-0 rounded-lg [transform-style:preserve-3d]" style={{ transform: `perspective(${PERSPECTIVE}px) rotateY(${REST}deg)`, opacity: item.image && !item.sideImage ? 1 : 0 }}>
                   {(["front", "back"] as const).map((side) => {
-                    const garmentIndex = i; // Guarda o índice do item no escopo seguro
+                    const garmentIndex = i;
                     const drapeRef = drapes; 
                     const shadeRef = shades;
                     const pBox = photoBox;
 
                     return (
-                      <span key={side} data-face={side} className="absolute inset-0 [backface-visibility:hidden]" style={{ transform: side === "back" ? "rotateY(180deg)" : undefined, ["--garment-color" as string]: color, ["--garment-under" as string]: mix(color, -0.42) }}>
+                        <span key={side} data-face={side} className="absolute inset-0 [backface-visibility:hidden]" style={{ transform: side === "back" ? "rotateY(180deg)" : undefined, ["--garment-color" as string]: color, ["--garment-under" as string]: mix(color, -0.42) }}>
                         
-                        {/* Haste do cabide fica atrás do tecido */}
+                        {/* 1. Haste de madeira do cabide (fica no fundo) */}
                         <HangerBack uid={uid} side={side} kind={item.image ? null : kind} material={hanger} />
                         
+                        {/* 2. T-shirt/Foto desenhada POR CIMA da madeira, escondendo os ombros do cabide */}
                         <span ref={side === "front" ? (node) => { drapeRef.current[garmentIndex] = node; } : undefined} data-drape className="absolute inset-0 origin-top [transform:skewX(var(--drape,0deg))]" style={side === "back" ? { transform: "skewX(calc(var(--drape, 0deg) * -1))" } : undefined}>
-                          {item.image
+                            {item.image
                             ? <Photo src={side === "back" ? (item.backImage ?? item.image) : item.image} alt="" full={hanger === "none"} />
                             : <Fabric uid={uid} kind={kind} side={side} color={color} trim={trim} />}
-                          <span ref={side === "front" ? (node) => { shadeRef.current[garmentIndex] = node; } : undefined} className={`pointer-events-none absolute bg-black ${item.image ? pBox : "inset-0"}`} style={{ opacity: "var(--shade, 0.2)", WebkitMask: `${item.image ? `url("${(side === "back" ? item.backImage : undefined) ?? item.image}")` : silhouetteMask(kind, side)} top center / contain no-repeat`, mask: `${item.image ? `url("${(side === "back" ? item.backImage : undefined) ?? item.image}")` : silhouetteMask(kind, side)} top center / contain no-repeat` }} />
+                            <span ref={side === "front" ? (node) => { shadeRef.current[garmentIndex] = node; } : undefined} className={`pointer-events-none absolute bg-black ${item.image ? pBox : "inset-0"}`} style={{ opacity: "var(--shade, 0.2)", WebkitMask: `${item.image ? `url("${(side === "back" ? item.backImage : undefined) ?? item.image}")` : silhouetteMask(kind, side)} top center / contain no-repeat`, mask: `${item.image ? `url("${(side === "back" ? item.backImage : undefined) ?? item.image}")` : silhouetteMask(kind, side)} top center / contain no-repeat` }} />
                         </span>
 
-                        {/* Gancho do cabide sai por cima da gola */}
+                        {/* 3. Gancho do cabide fica no topo (sai de dentro da gola) */}
                         <HangerHook uid={uid} material={hanger} />
-                      </span>
+                        </span>
                     );
-                  })}
+                    })}
                 </span>
                 {item.tag && (
                   <span ref={(node) => { tags.current[i] = node; }} aria-hidden="true" className="pointer-events-none absolute left-1/2 origin-top" style={{ top: (32 / VB_H) * h, transform: "rotate(-12deg)" }}>
