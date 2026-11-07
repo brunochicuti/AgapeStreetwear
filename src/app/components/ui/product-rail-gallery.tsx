@@ -375,8 +375,8 @@ function Defs({ uid }: { uid: string }) {
 
 const HOOK = "M100,36 L100,-0.4 C100,-3.4 102.2,-4.2 103.9,-2.8 C104.9,-2 105.4,-1.2 105.6,-0.2";
 const HOOK_HI = "M99.5,30 L99.5,-0.2 C99.5,-2.4 101,-3.2 102.4,-2.6";
-const BAR = "M40,52 Q70,42 100,34 Q130,42 160,52";
-const BAR_HI = "M42,49.5 Q71,39.5 100,32.5 Q129,39.5 158,49.5";
+const BAR = "M36,66 Q70,52 100,42 Q130,52 164,66";
+const BAR_HI = "M38,63.5 Q71,49.5 100,39.5 Q129,49.5 162,63.5";
 
 function Hook({ uid }: { uid: string }) {
   return (
@@ -1045,7 +1045,10 @@ export function ClothingRailHero({
                     return (
                         <span key={side} data-face={side} className="absolute inset-0 [backface-visibility:hidden]" style={{ transform: side === "back" ? "rotateY(180deg)" : undefined, ["--garment-color" as string]: color, ["--garment-under" as string]: mix(color, -0.42) }}>
                         
-                        {/* 1. T-shirt/Foto desenhada primeiro na base */}
+                        {/* 1. Haste de madeira (fica na camada de trás da gola) */}
+                        <HangerBack uid={uid} side={side} kind={item.image ? null : kind} material={hanger} />
+
+                        {/* 2. Imagem da Camiseta (a gola da frente cobre a madeira central) */}
                         <span ref={side === "front" ? (node) => { drapeRef.current[garmentIndex] = node; } : undefined} data-drape className="absolute inset-0 origin-top [transform:skewX(var(--drape,0deg))]" style={side === "back" ? { transform: "skewX(calc(var(--drape, 0deg) * -1))" } : undefined}>
                             {item.image
                             ? <Photo src={side === "back" ? (item.backImage ?? item.image) : item.image} alt="" full={hanger === "none"} />
@@ -1053,10 +1056,7 @@ export function ClothingRailHero({
                             <span ref={side === "front" ? (node) => { shadeRef.current[garmentIndex] = node; } : undefined} className={`pointer-events-none absolute bg-black ${item.image ? pBox : "inset-0"}`} style={{ opacity: "var(--shade, 0.2)", WebkitMask: `${item.image ? `url("${(side === "back" ? item.backImage : undefined) ?? item.image}")` : silhouetteMask(kind, side)} top center / contain no-repeat`, mask: `${item.image ? `url("${(side === "back" ? item.backImage : undefined) ?? item.image}")` : silhouetteMask(kind, side)} top center / contain no-repeat` }} />
                         </span>
 
-                        {/* 2. O cabide de madeira fica por cima, cruzando a gola e saindo nos ombros */}
-                        <HangerBack uid={uid} side={side} kind={item.image ? null : kind} material={hanger} />
-
-                        {/* 3. O gancho metálico no topo */}
+                        {/* 3. Gancho metálico no topo (sai por cima de tudo) */}
                         <HangerHook uid={uid} material={hanger} />
                         </span>
                     );
