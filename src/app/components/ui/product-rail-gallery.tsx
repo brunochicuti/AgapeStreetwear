@@ -519,21 +519,20 @@ function Photo({ src, alt, full, back = false }: {
   back?: boolean;
 }) {
   return (
-  <img
-    src={src}
-    alt={alt}
-    draggable={false}
-    className={`pointer-events-none absolute bottom-0 select-none ${back ? "object-cover object-top" : "object-contain object-top"} ${
-      full ? "top-0 h-full" : "top-[2%] h-[96%]"
-    }`}
-    style={{
-    width: back ? "130%" : "100%",
-    height: back ? "130%" : undefined,
-    left: back ? "-15%" : "0",
-      maxWidth: "none",
-    }}
-  />
-);
+    <img
+      src={src}
+      alt={alt}
+      draggable={false}
+      className={`pointer-events-none absolute bottom-0 size-auto select-none object-contain object-top ${
+        full ? "top-0 h-full" : "top-[5%] h-[90%]"
+      }`}
+      style={{
+        width: back ? "100%" : "94%",
+        left: back ? "0" : "3%",
+        maxWidth: "none",
+      }}
+    />
+  );
 }
 
 type Sim = {
