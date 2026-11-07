@@ -376,8 +376,8 @@ function Defs({ uid }: { uid: string }) {
 
 const HOOK = "M100,36 L100,-0.4 C100,-3.4 102.2,-4.2 103.9,-2.8 C104.9,-2 105.4,-1.2 105.6,-0.2";
 const HOOK_HI = "M99.5,30 L99.5,-0.2 C99.5,-2.4 101,-3.2 102.4,-2.6";
-const BAR = "M38,62 Q70,48 100,36 Q130,48 162,62";
-const BAR_HI = "M40,60 Q71,46 100,34.5 Q129,46 160,60";
+const BAR = "M38,65 Q70,42 100,36 Q130,42 162,65";
+const BAR_HI = "M40,63 Q71,40.5 100,34.5 Q129,40.5 160,63";
 
 function Hook({ uid }: { uid: string }) {
   return (
