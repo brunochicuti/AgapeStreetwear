@@ -41,7 +41,7 @@ export default function ClothingRailHeroDemo({
 return (
       <div
         data-rail-demo
-        className="relative w-full min-h-screen flex flex-col justify-between overflow-hidden text-foreground bg-transparent"
+        className="relative left-1/2 flex min-h-svh w-screen -translate-x-1/2 items-center justify-center overflow-hidden text-foreground"
       >
         <ClothingRailHero
           items={items}
