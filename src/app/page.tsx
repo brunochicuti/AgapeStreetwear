@@ -60,7 +60,7 @@ export default async function Home() {
   console.log("PRODUTOS:", JSON.stringify(products.map((p) => ({ id: p.id, name: p.name, etiqueta: p.etiqueta }))));
 
   return (
-    <div className="w-full min-h-screen m-0 p-0 overflow-x-hidden bg-background">
+    <div className="relative w-full overflow-hidden text-foreground">
       {/* Arara com largura total de ponta a ponta */}
       <ClothingRailHeroDemo products={products} />
     </div>
