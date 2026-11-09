@@ -1105,7 +1105,7 @@ export function ClothingRailHero({
           {current?.description && <p key={`${current.id}-d`} className="mx-auto mt-1 max-w-[42ch] text-[13px] leading-relaxed text-muted-foreground">{current.description}</p>}
         </div>
         {action && (
-        <div onClick={() => open(0)}>
+        <div className="sm:hidden" onClick={() => open(0)}>
             {action}
         </div>
         )}

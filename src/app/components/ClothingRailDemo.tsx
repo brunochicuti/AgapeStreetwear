@@ -55,14 +55,14 @@ return (
             type="button"
             className="rounded-full bg-foreground px-5 py-2.5 text-sm font-medium text-background shadow-sm outline-none transition-[transform,box-shadow] hover:-translate-y-px hover:shadow-md focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background motion-reduce:transition-none"
           >
-            action={
-              <button
-                type="button"
-                className="rounded-full bg-foreground px-5 py-2.5 text-sm font-medium text-background shadow-sm outline-none transition-[transform,box-shadow] hover:-translate-y-px hover:shadow-md focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background motion-reduce:transition-none"
-              >
-                Ver coleção
-              </button>
-            }
+          action={
+            <button
+              type="button"
+              className="rounded-full bg-foreground px-5 py-2.5 text-sm font-medium text-background shadow-sm"
+            >
+              Ver coleção
+            </button>
+          }
           </button>
         }
       />
