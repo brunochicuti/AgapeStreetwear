@@ -43,19 +43,23 @@ return (
         data-rail-demo
         className="relative flex min-h-[calc(100svh)] w-full items-center justify-center overflow-hidden bg-[#F5F1E8] text-foreground"
       >
-        <ClothingRailHero
-          items={items}
-          hanger="wood"
-          eyebrow="Loja Ágape"
-          heading="Arara de Produtos"
-          caption="Passe o cursor e clique na peça para ver os detalhes e as diferentes vistas."
-          autoplay={autoplay}
-          action={
-            <button type="button" className="rounded-full bg-foreground px-5 py-2.5 text-sm font-medium text-background shadow-sm outline-none transition-[transform,box-shadow] hover:-translate-y-px hover:shadow-md focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background motion-reduce:transition-none">
-              Shop the edit
-            </button>
-          }
-        />
+      <ClothingRailHero
+        items={items}
+        hanger="wood"
+        eyebrow="Loja Ágape"
+        heading="Arara de Produtos"
+        caption="Passe o cursor e clique na peça para ver os detalhes e as diferentes vistas."
+        autoplay={autoplay}
+        action={
+          <button
+            type="button"
+            className="rounded-full bg-foreground px-5 py-2.5 text-sm font-medium text-background shadow-sm outline-none transition-[transform,box-shadow] hover:-translate-y-px hover:shadow-md focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background motion-reduce:transition-none"
+          >
+            <span className="sm:hidden">Ver coleção</span>
+            <span className="hidden sm:inline">Shop the edit</span>
+          </button>
+        }
+      />
       </div>
     );
   }
