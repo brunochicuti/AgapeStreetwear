@@ -35,6 +35,7 @@ export default function ClothingRailHeroDemo({
       image: "/images/camisa_agape_frente.png",
       backImage: "/images/camisa_agape_costas.png",
       sideImage: "/images/camisa_agape_lado.png",
+      product: camisa,
     },
   ];
 

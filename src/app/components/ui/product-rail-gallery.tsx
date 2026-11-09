@@ -2,6 +2,9 @@
 
 import * as React from "react";
 import { createPortal } from "react-dom";
+import { LiquidMetalButton } from "./liquid-metal-button";
+import { useCartStore } from "@/src/store";
+import type { ProductType } from "@/src/types/ProductType";
 
 export type GarmentKind = "tee" | "knit" | "hoodie" | "shirt" | "jacket" | "coat";
 
@@ -26,6 +29,8 @@ export interface RailGarment {
   tag?: string;
   /** Short facts listed in the detail view. */
   details?: string[];
+
+  product?: ProductType;
 }
 
 export interface ClothingRailHeroLabels {
@@ -73,7 +78,7 @@ const GAP = 0.035;
 const MAX_H = 400;
 const MIN_WIDE_H = 200;
 const CAROUSEL_H = 340;
-const DEFAULT_LABELS: ClothingRailHeroLabels = { front: "Front", back: "Back", close: "Sair", show: "Show" };
+const DEFAULT_LABELS: ClothingRailHeroLabels = { front: "Frente", back: "Costas", close: "Sair", show: "Show" };
 
 type Tone = { d: string; t: number };
 type Art = {
@@ -1154,6 +1159,21 @@ function Detail({ uid, item, index, total, hanger, labels, reduced, source, onLi
   const trim = item.trim ?? mix(color, -0.12);
   const titleId = `${uid}-detail-title`;
 
+  const addProduct = useCartStore((state) => state.addProduct);
+
+    const adicionarAoCarrinho = () => {
+    if (!item.product || item.product.price === null) return;
+
+    addProduct(item.product);
+    };
+
+    const comprarAgora = () => {
+    if (!item.product || item.product.price === null) return;
+
+    addProduct(item.product);
+    useCartStore.setState({ isOpen: true });
+    };
+
   const spin = React.useCallback(() => {
     const a = angle.current;
     const node = spinRef.current;
@@ -1305,6 +1325,19 @@ function Detail({ uid, item, index, total, hanger, labels, reduced, source, onLi
               </button>
             ))}
           </div>
+
+          <div className="mt-6 flex flex-wrap justify-center gap-3 md:justify-start">
+            <LiquidMetalButton
+                label="Adicionar à sacola"
+                onClick={adicionarAoCarrinho}
+            />
+
+            <LiquidMetalButton
+                label="Comprar agora"
+                onClick={comprarAgora}
+            />
+            </div>
+            
         </div>
       </div>
     </div>,
