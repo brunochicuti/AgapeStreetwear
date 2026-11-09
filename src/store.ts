@@ -5,7 +5,7 @@ import { ProductType } from "@/src/types/ProductType";
 
 type CartState = {
     cart: ProductType[];
-    addProduct: (product: ProductType) => void;
+    addProduct: (product: ProductType, quantity?: number) => void;
     removeProduct: (product: ProductType) => void;
 
     clearCart: () => void;
@@ -25,8 +25,10 @@ export const useCartStore = create<CartState>()(
         (set) => ({
             cart: [],
 
-            addProduct: (item) =>
+            addProduct: (item, quantity =1) =>
                 set((state) => {
+                    const quantidadeAdicionar = Math.max(1, Math.floor(quantity));
+
                     const product = state.cart.find(
                         (p) => p.id === item.id
                     );
@@ -36,9 +38,7 @@ export const useCartStore = create<CartState>()(
                             if (p.id === item.id) {
                                 return {
                                     ...p,
-                                    quantity: p.quantity
-                                        ? p.quantity + 1
-                                        : 1,
+                                    quantity: (p.quantity ?? 1) + quantidadeAdicionar,
                                 };
                             }
 
@@ -54,7 +54,7 @@ export const useCartStore = create<CartState>()(
                     return {
                         cart: [
                             ...state.cart,
-                            { ...item, quantity: 1 },
+                            { ...item, quantity: quantidadeAdicionar },
                         ],
                         paymentIntent: "",
                     };
