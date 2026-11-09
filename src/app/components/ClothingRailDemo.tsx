@@ -51,17 +51,12 @@ return (
         caption="Passe o cursor e clique na peça para ver os detalhes e as diferentes vistas."
         autoplay={autoplay}
         action={
-          <button
-            type="button"
-            className="rounded-full bg-foreground px-5 py-2.5 text-sm font-medium text-background shadow-sm outline-none transition-[transform,box-shadow] hover:-translate-y-px hover:shadow-md focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background motion-reduce:transition-none"
-          >
             <button
               type="button"
               className="rounded-full bg-foreground px-5 py-2.5 text-sm font-medium text-background shadow-sm"
             >
               Ver coleção
             </button>
-          </button>
         }
       />
       </div>
