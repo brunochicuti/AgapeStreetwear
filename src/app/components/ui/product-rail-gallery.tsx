@@ -1162,11 +1162,17 @@ function Detail({ uid, item, index, total, hanger, labels, reduced, source, onLi
   const addProduct = useCartStore((state) => state.addProduct);
 
     const adicionarAoCarrinho = () => {
-    if (!item.product || item.product.price === null) return;
+    console.log("Clique em Adicionar à sacola");
+
+    if (!item.product || item.product.price === null) {
+        console.log("Produto inválido:", item.product);
+        return;
+    }
 
     addProduct(item.product);
+    console.log("Produto enviado ao carrinho:", item.product);
     };
-
+    
     const comprarAgora = () => {
     if (!item.product || item.product.price === null) return;
 
@@ -1337,7 +1343,7 @@ function Detail({ uid, item, index, total, hanger, labels, reduced, source, onLi
                 onClick={comprarAgora}
             />
             </div>
-            
+
         </div>
       </div>
     </div>,
