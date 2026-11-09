@@ -57,7 +57,6 @@ async function getProducts(): Promise<ProductType[]> {
 
 export default async function Home() {
   const products = await getProducts();
-  console.log("PRODUTOS:", JSON.stringify(products.map((p) => ({ id: p.id, name: p.name, etiqueta: p.etiqueta }))));
 
   return (
     <div className="relative w-full overflow-hidden text-foreground">

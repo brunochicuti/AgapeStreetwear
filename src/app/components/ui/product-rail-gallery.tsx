@@ -964,7 +964,7 @@ export function ClothingRailHero({
         data-mode={size.carousel ? "carousel" : "rail"}
         data-active={active ?? ""}
         aria-roledescription="clothing rail"
-        className={`relative isolate w-full overflow-hidden text-foreground ${className ?? ""}`}
+        className={`relative isolate left-1/2 w-screen -translate-x-1/2 overflow-hidden text-foreground ${className ?? ""}`}
         style={{ backgroundColor: "#F5F1E8" }}
         >
       <Defs uid={uid} />
