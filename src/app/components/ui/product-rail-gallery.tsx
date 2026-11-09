@@ -5,6 +5,8 @@ import { createPortal } from "react-dom";
 import { LiquidMetalButton } from "./liquid-metal-button";
 import { useCartStore } from "@/src/store";
 import type { ProductType } from "@/src/types/ProductType";
+import { useRouter } from "next/navigation";
+import { useUser } from "@clerk/nextjs";
 
 export type GarmentKind = "tee" | "knit" | "hoodie" | "shirt" | "jacket" | "coat";
 
@@ -1158,26 +1160,31 @@ function Detail({ uid, item, index, total, hanger, labels, reduced, source, onLi
   const color = item.color ?? "var(--color-muted-foreground)";
   const trim = item.trim ?? mix(color, -0.12);
   const titleId = `${uid}-detail-title`;
+  const router = useRouter();
+  const { user, isLoaded } = useUser();
+  const setCheckout = useCartStore((state) => state.setCheckout);
 
   const addProduct = useCartStore((state) => state.addProduct);
 
     const adicionarAoCarrinho = () => {
-    console.log("Clique em Adicionar à sacola");
-
-    if (!item.product || item.product.price === null) {
-        console.log("Produto inválido:", item.product);
-        return;
-    }
-
-    addProduct(item.product);
-    console.log("Produto enviado ao carrinho:", item.product);
-    };
-    
-    const comprarAgora = () => {
     if (!item.product || item.product.price === null) return;
 
     addProduct(item.product);
     useCartStore.setState({ isOpen: true });
+    }
+
+    const comprarAgora = () => {
+    if (!isLoaded || !item.product || item.product.price === null) return;
+
+    addProduct(item.product);
+
+    if (!user) {
+        router.push("/sign-in?redirectUrl=/checkout");
+        return;
+    }
+
+    setCheckout("checkout");
+    router.push("/checkout");
     };
 
   const spin = React.useCallback(() => {
