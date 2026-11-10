@@ -22,6 +22,7 @@
     "@tailwindcss/postcss": "^4.3.3",
     "clsx": "^2.1.1",
     "dotenv": "^18.0.9",
+    "framer-motion": "^14.11.1",
     "lucide-react": "^1.70.0",
     "next": "16.4.3",
     "react": "19.3.0",
