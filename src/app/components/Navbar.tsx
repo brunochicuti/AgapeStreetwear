@@ -30,7 +30,7 @@ function Navbar() {
   const pathname = usePathname();
 
   return (
-    <header className="fixed top-0 left-0 w-full z-50 bg-black/95 backdrop-blur-xl border-b border-white/10">
+    <header className="fixed top-0 left-0 w-full z-50 bg-black border-b border-white/10">
       <nav className="max-w-[1600px] mx-auto px-4 md:px-8 min-h-[76px] flex flex-wrap items-center justify-between gap-3 py-3">
 
         {/* LOGO */}

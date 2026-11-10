@@ -1,40 +1,34 @@
-
 "use client";
-
-import { useCartStore } from "@/src/store";
-import CartDrawer from "./CartDrawer";
-import { ShoppingBag } from "lucide-react";
-
-export default function Cart() {
-  const useStore = useCartStore();
-
-  return (
-    <>
-      <button
-        onClick={() => useStore.toggleCart()}
-        type="button"
-        aria-label="Abrir sacola"
-        className="
-          flex items-center gap-2
-          px-4 py-2.5
-          rounded-full
-          border border-white/20
-          bg-white/5
-          text-white
-          font-semibold
-          uppercase tracking-wider
-          text-xs
-          transition-all duration-300
-          hover:border-red-600
-          hover:bg-red-600/10
-        "
-      >
-        <ShoppingBag size={17} strokeWidth={1.8} />
-
-        <span>Sacola ({useStore.cart?.length ?? 0})</span>
-      </button>
-
-      {useStore.isOpen && <CartDrawer />}
-    </>
-  );
+import { useCartStore } from '@/src/store';
+import CartDrawer from './CartDrawer';
+export default function Cart(){
+    const useStore = useCartStore();
+    return(
+            <>
+                <button
+                onClick={() => useStore.toggleCart()}
+                type="button"
+                className="ml-auto cursor-pointer flex items-center gap-3 bg-white px-5 py-3 text-black font-semibold uppercase tracking-wider text-sm hover:bg-gray-200 transition">
+                    <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="20"
+                    height="20"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.8"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    >
+                    <path d="M5.5 8h13l-1 12h-11l-1-12Z" />
+                    <path d="M9 8V6a3 3 0 0 1 6 0v2" />
+                    </svg>
+                    <span>Sacola ({useStore.cart?.length})</span>
+                 </button>
+                    {
+                    useStore.isOpen && (
+                        <CartDrawer/>
+                    )}
+            </>
+    )
 }
