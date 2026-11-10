@@ -443,7 +443,7 @@ export default function Checkout() {
   }
 
   return (
-    <div className="min-h-[calc(100vh-8rem)] bg-white px-4 py-10 text-black sm:px-8 lg:px-12">
+    <div className="min-h-[calc(100vh-8rem)] bg-white px-4 pt-28 pb-10 text-black sm:px-8 sm:pt-32 lg:px-12">
       <div className="mx-auto max-w-6xl">
       <div className="mb-8 border-b border-gray-200 pb-6">
         <div className="flex items-center gap-5">
