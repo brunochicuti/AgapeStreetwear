@@ -445,27 +445,31 @@ export default function Checkout() {
   return (
     <div className="min-h-[calc(100vh-8rem)] bg-white px-4 py-10 text-black sm:px-8 lg:px-12">
       <div className="mx-auto max-w-6xl">
-        <div className="mb-8 border-b border-gray-200 pb-6">
-          <a
-            href="/"
-            className="inline-flex items-center justify-center gap-2 rounded-lg border border-black bg-white px-5 py-3 text-xs font-bold uppercase tracking-wider text-black transition hover:bg-black hover:text-white"
-          >
-            <span aria-hidden="true">←</span>
-            Voltar à página inicial
-          </a>
+      <div className="flex items-start justify-between gap-6">
+        {/* Botão à esquerda */}
+        <a
+          href="/"
+          className="inline-flex shrink-0 items-center gap-2 rounded-lg border border-black bg-white px-5 py-3 text-xs font-bold uppercase tracking-wider text-black transition hover:bg-black hover:text-white"
+        >
+          <span aria-hidden="true">←</span>
+          Voltar à página inicial
+        </a>
 
-          <p className="mt-6 text-xs font-bold uppercase tracking-[0.3em] text-gray-400">
+        {/* Título à direita */}
+        <div className="text-right">
+          <p className="text-sm font-bold tracking-wide text-black">
             Agape Streetwear
           </p>
 
-          <h1 className="mt-3 text-3xl font-black uppercase tracking-tight sm:text-4xl">
-            Finalizar pedido<span className="text-gray-400">.</span>
+          <h1 className="mt-2 text-3xl font-bold text-black">
+            Finalizar pedido.
           </h1>
 
           <p className="mt-2 text-sm text-gray-500">
             Complete as etapas abaixo para concluir sua compra.
           </p>
         </div>
+      </div>
 
         <div className="grid grid-cols-1 gap-10 lg:grid-cols-[1.2fr_0.8fr] lg:gap-16">
           <section className="order-2 lg:order-1">
