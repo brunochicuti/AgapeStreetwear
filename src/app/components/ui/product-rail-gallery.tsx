@@ -1154,6 +1154,7 @@ function Detail({ uid, item, index, total, hanger, labels, reduced, source, onLi
   const closeRef = React.useRef(null as HTMLButtonElement | null);
   const [side, setSide] = React.useState("front" as "front" | "back");
   const [shown, setShown] = React.useState(false);
+  const [quantity, setQuantity] = React.useState(1);
   const angle = React.useRef({ value: 0, target: 0, velocity: 0, raf: 0, last: 0, dragging: false, startX: 0, startAngle: 0 });
   const closing = React.useRef(false);
   const kind = item.kind ?? "tee";
@@ -1166,26 +1167,26 @@ function Detail({ uid, item, index, total, hanger, labels, reduced, source, onLi
 
   const addProduct = useCartStore((state) => state.addProduct);
 
-    const adicionarAoCarrinho = () => {
-    if (!item.product || item.product.price === null) return;
+const adicionarAoCarrinho = () => {
+  if (!item.product || item.product.price === null) return;
 
-    addProduct(item.product);
-    useCartStore.setState({ isOpen: true });
-    }
+  addProduct(item.product, quantity);
+  useCartStore.setState({ isOpen: true });
+};
 
-    const comprarAgora = () => {
-    if (!isLoaded || !item.product || item.product.price === null) return;
+const comprarAgora = () => {
+  if (!isLoaded || !item.product || item.product.price === null) return;
 
-    addProduct(item.product);
+  addProduct(item.product, quantity);
 
-    if (!user) {
-        router.push("/sign-in?redirectUrl=/checkout");
-        return;
-    }
+  if (!user) {
+    router.push("/sign-in?redirectUrl=/checkout");
+    return;
+  }
 
-    setCheckout("checkout");
-    router.push("/checkout");
-    };
+  setCheckout("checkout");
+  router.push("/checkout");
+};
 
   const spin = React.useCallback(() => {
     const a = angle.current;
@@ -1339,16 +1340,51 @@ function Detail({ uid, item, index, total, hanger, labels, reduced, source, onLi
             ))}
           </div>
 
-          <div className="mt-6 flex flex-wrap justify-center gap-3 md:justify-start">
-            <LiquidMetalButton
+            <div className="mt-6 flex flex-col gap-5">
+
+            <div className="flex flex-col items-center gap-2 md:items-start">
+                <span className="text-sm font-medium text-foreground">
+                Quantidade
+                </span>
+
+                <div className="flex items-center border border-border rounded-md">
+                <button
+                    type="button"
+                    onClick={() => setQuantity((q) => Math.max(1, q - 1))}
+                    disabled={quantity <= 1}
+                    aria-label="Diminuir quantidade"
+                    className="px-4 py-3 text-foreground hover:bg-muted disabled:opacity-30"
+                >
+                    −
+                </button>
+
+                <span className="min-w-12 text-center text-foreground">
+                    {quantity}
+                </span>
+
+                <button
+                    type="button"
+                    onClick={() => setQuantity((q) => q + 1)}
+                    aria-label="Aumentar quantidade"
+                    className="px-4 py-3 text-foreground hover:bg-muted"
+                >
+                    +
+                </button>
+                </div>
+            </div>
+
+            <div className="flex flex-wrap justify-center gap-3 md:justify-start">
+                <LiquidMetalButton
                 label="Adicionar à sacola"
                 onClick={adicionarAoCarrinho}
-            />
+                />
 
-            <LiquidMetalButton
+                <LiquidMetalButton
                 label="Comprar agora"
                 onClick={comprarAgora}
-            />
+                />
+            </div>
+
             </div>
 
         </div>
