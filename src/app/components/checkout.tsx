@@ -445,22 +445,23 @@ export default function Checkout() {
   return (
     <div className="min-h-[calc(100vh-8rem)] bg-white px-4 py-10 text-black sm:px-8 lg:px-12">
       <div className="mx-auto max-w-6xl">
-        <div className="flex items-start gap-5">
+      <div className="mb-8 border-b border-gray-200 pb-6">
+        <div className="flex items-center gap-5">
           <a
             href="/"
-            className="mt-1 inline-flex shrink-0 items-center gap-2 rounded-lg border border-black px-4 py-3 text-xs font-bold uppercase tracking-wider text-black transition hover:bg-black hover:text-white"
+            className="inline-flex shrink-0 items-center gap-2 rounded-lg border border-black bg-white px-5 py-3 text-xs font-bold uppercase tracking-wider text-black transition hover:bg-black hover:text-white"
           >
             <span aria-hidden="true">←</span>
             Voltar
           </a>
 
           <div>
-            <p className="text-sm font-bold tracking-wide text-black">
+            <p className="text-xs font-bold uppercase tracking-[0.3em] text-gray-400">
               Agape Streetwear
             </p>
 
-            <h1 className="mt-2 text-3xl font-bold text-black">
-              Finalizar pedido.
+            <h1 className="mt-2 text-3xl font-black uppercase tracking-tight sm:text-4xl">
+              Finalizar pedido<span className="text-gray-400">.</span>
             </h1>
 
             <p className="mt-2 text-sm text-gray-500">
@@ -468,6 +469,7 @@ export default function Checkout() {
             </p>
           </div>
         </div>
+      </div>
 
         <div className="grid grid-cols-1 gap-10 lg:grid-cols-[1.2fr_0.8fr] lg:gap-16">
           <section className="order-2 lg:order-1">
