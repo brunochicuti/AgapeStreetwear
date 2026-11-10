@@ -452,7 +452,7 @@ export default function Checkout() {
             className="inline-flex shrink-0 items-center gap-2 rounded-lg border border-black bg-white px-5 py-3 text-xs font-bold uppercase tracking-wider text-black transition hover:bg-black hover:text-white"
           >
             <span aria-hidden="true">←</span>
-            Voltar
+            Continuar comprando
           </a>
 
           <div>
