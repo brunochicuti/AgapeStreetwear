@@ -448,10 +448,10 @@ export default function Checkout() {
         <div className="mb-8 border-b border-gray-200 pb-6">
           <a
             href="/"
-            className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-gray-500 transition hover:text-black"
+            className="inline-flex items-center justify-center gap-2 rounded-lg border border-black bg-white px-5 py-3 text-xs font-bold uppercase tracking-wider text-black transition hover:bg-black hover:text-white"
           >
             <span aria-hidden="true">←</span>
-            Continuar comprando
+            Voltar à página inicial
           </a>
 
           <p className="mt-6 text-xs font-bold uppercase tracking-[0.3em] text-gray-400">
