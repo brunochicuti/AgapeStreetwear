@@ -87,43 +87,50 @@
         </section>
 
         <section>
-          <h2 className="mb-3 text-xl font-semibold text-black">
+        <h2 className="mb-3 text-xl font-semibold text-black">
             5. Cookies necessários e opcionais
-          </h2>
-          <p>
-            Tecnologias estritamente necessárias ao funcionamento,
-            autenticação, segurança e processamento de compras podem ser
-            utilizadas para fornecer o serviço solicitado.
-          </p>
-          <p>
-            Cookies de análise, publicidade ou outras finalidades
-            opcionais, caso sejam implementados, deverão respeitar as
-            escolhas de consentimento do usuário e não serão ativados
-            antes da autorização quando ela for necessária.
-          </p>
-          <p>
-            Até o momento, a auditoria do código da loja não identificou
-            ferramentas próprias de Google Analytics, Meta Pixel ou
-            Microsoft Clarity. Essa informação poderá mudar caso novas
-            integrações sejam adicionadas.
-          </p>
+        </h2>
+        <p>
+            Tecnologias necessárias ao funcionamento da loja, à autenticação,
+            à segurança e ao processamento de compras podem ser utilizadas
+            para fornecer os serviços solicitados pelo usuário.
+        </p>
+        <p>
+            O banner de preferências permite registrar escolhas para as
+            categorias funcionais, análise e marketing. As categorias
+            opcionais começam desativadas e podem ser aceitas ou rejeitadas
+            pelo usuário.
+        </p>
+        <p>
+            Atualmente, a auditoria do código não identificou ferramentas
+            próprias de Google Analytics, Meta Pixel ou Microsoft Clarity.
+            As preferências registradas ainda não estão conectadas a
+            ferramentas opcionais de análise ou publicidade. Caso novas
+            integrações sejam adicionadas, seu funcionamento deverá respeitar
+            as escolhas do usuário.
+        </p>
         </section>
 
         <section>
-          <h2 className="mb-3 text-xl font-semibold text-black">
+        <h2 className="mb-3 text-xl font-semibold text-black">
             6. Gerenciamento de preferências
-          </h2>
-          <p>
-            O usuário pode gerenciar cookies por meio das configurações
-            do próprio navegador, incluindo bloqueio e exclusão.
-            Entretanto, a desativação de tecnologias necessárias pode
-            impedir o login, o checkout ou outras funcionalidades.
-          </p>
-          <p>
-            Quando o mecanismo de preferências de cookies da loja estiver
-            disponível, o usuário também poderá revisar ou alterar suas
-            escolhas por meio dele.
-          </p>
+        </h2>
+        <p>
+            O usuário pode aceitar todos os cookies, rejeitar os opcionais
+            ou personalizar suas escolhas pelo banner de preferências
+            apresentado pela loja.
+        </p>
+        <p>
+            Após salvar as escolhas, o usuário pode abrir novamente as
+            configurações pelo botão "Cookies", disponível no canto
+            inferior direito da página, e alterar suas preferências.
+        </p>
+        <p>
+            O usuário também pode gerenciar cookies e dados armazenados
+            pelo navegador, incluindo bloqueio e exclusão. A desativação
+            de tecnologias necessárias pode impedir o login, o checkout
+            ou outras funcionalidades.
+        </p>
         </section>
 
         <section>
