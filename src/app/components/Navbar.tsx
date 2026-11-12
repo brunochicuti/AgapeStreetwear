@@ -15,7 +15,7 @@ const navItems = [
     icon: Home,
   },
   {
-    label: "/pedido-confirmado",
+    label: "Acompanhar pedido",
     href: "/pedido-confirmado",
     icon: PackageSearch,
   },
