@@ -1,8 +1,8 @@
 ﻿export default function PrivacyContent() {
   return (
-    <article className="mx-auto max-w-4xl px-6 py-16 text-white">
+    <article className="mx-auto max-w-4xl px-6 pt-28 pb-16 text-black">
       <header className="mb-12">
-        <p className="mb-3 text-sm uppercase tracking-widest text-gray-400">
+        <p className="mb-3 text-sm uppercase tracking-widest text-gray-600">
           Agape Streetwear
         </p>
 
@@ -10,14 +10,14 @@
           Política de Privacidade
         </h1>
 
-        <p className="text-sm text-gray-400">
+        <p className="text-sm text-gray-600">
           Última atualização: 12 de novembro de 2026
         </p>
       </header>
 
-      <div className="space-y-10 leading-7 text-gray-300">
+      <div className="space-y-10 leading-7 text-gray-700">
         <section>
-          <h2 className="mb-3 text-xl font-semibold text-white">
+          <h2 className="mb-3 text-xl font-semibold text-black">
             1. Introdução
           </h2>
           <p>
@@ -31,7 +31,7 @@
         </section>
 
         <section>
-          <h2 className="mb-3 text-xl font-semibold text-white">
+          <h2 className="mb-3 text-xl font-semibold text-black">
             2. Responsável pelo tratamento
           </h2>
           <p>
@@ -46,7 +46,7 @@
         </section>
 
         <section>
-          <h2 className="mb-3 text-xl font-semibold text-white">
+          <h2 className="mb-3 text-xl font-semibold text-black">
             3. Dados pessoais coletados
           </h2>
           <p>Podemos coletar:</p>
@@ -62,7 +62,7 @@
         </section>
 
         <section>
-          <h2 className="mb-3 text-xl font-semibold text-white">
+          <h2 className="mb-3 text-xl font-semibold text-black">
             4. Finalidades do tratamento
           </h2>
           <p>Utilizamos os dados para:</p>
@@ -78,7 +78,7 @@
         </section>
 
         <section>
-          <h2 className="mb-3 text-xl font-semibold text-white">
+          <h2 className="mb-3 text-xl font-semibold text-black">
             5. Compartilhamento de dados
           </h2>
           <p>
@@ -99,7 +99,7 @@
         </section>
 
         <section>
-          <h2 className="mb-3 text-xl font-semibold text-white">
+          <h2 className="mb-3 text-xl font-semibold text-black">
             6. Transferência internacional
           </h2>
           <p>
@@ -116,7 +116,7 @@
         </section>
 
         <section>
-          <h2 className="mb-3 text-xl font-semibold text-white">
+          <h2 className="mb-3 text-xl font-semibold text-black">
             7. Segurança das informações
           </h2>
           <p>
@@ -128,7 +128,7 @@
         </section>
 
         <section>
-          <h2 className="mb-3 text-xl font-semibold text-white">
+          <h2 className="mb-3 text-xl font-semibold text-black">
             8. Cookies e tecnologias semelhantes
           </h2>
           <p>
@@ -144,7 +144,7 @@
         </section>
 
         <section>
-          <h2 className="mb-3 text-xl font-semibold text-white">
+          <h2 className="mb-3 text-xl font-semibold text-black">
             9. Comunicações
           </h2>
           <p>
@@ -165,7 +165,7 @@
         </section>
 
         <section>
-          <h2 className="mb-3 text-xl font-semibold text-white">
+          <h2 className="mb-3 text-xl font-semibold text-black">
             10. Retenção e exclusão dos dados
           </h2>
           <p>
@@ -184,7 +184,7 @@
         </section>
 
         <section>
-          <h2 className="mb-3 text-xl font-semibold text-white">
+          <h2 className="mb-3 text-xl font-semibold text-black">
             11. Direitos dos titulares
           </h2>
           <p>
@@ -199,14 +199,14 @@
           </p>
           <a
             href="mailto:contato@agapestreetwear.com.br"
-            className="mt-2 inline-block text-white underline underline-offset-4"
+            className="mt-2 inline-block text-black underline underline-offset-4"
           >
             contato@agapestreetwear.com.br
           </a>
         </section>
 
         <section>
-          <h2 className="mb-3 text-xl font-semibold text-white">
+          <h2 className="mb-3 text-xl font-semibold text-black">
             12. Alterações nesta política
           </h2>
           <p>
@@ -218,7 +218,7 @@
         </section>
 
         <section>
-          <h2 className="mb-3 text-xl font-semibold text-white">
+          <h2 className="mb-3 text-xl font-semibold text-black">
             13. Contato
           </h2>
           <p>
@@ -238,4 +238,5 @@
     </article>
   );
 }
+
 
