@@ -64,6 +64,17 @@ export function CookiePanel({
     setReady(true);
   }, []);
 
+  function hidePanel() {
+  const activeElement = document.activeElement;
+
+  if (activeElement instanceof HTMLElement) {
+    activeElement.blur();
+  }
+
+  setShowPrefs(false);
+  setVisible(false);
+}
+
   function savePreferences(nextPrefs: Prefs) {
     const finalPrefs: Prefs = {
       ...nextPrefs,
@@ -77,8 +88,7 @@ export function CookiePanel({
     }
 
     setPrefs(finalPrefs);
-    setShowPrefs(false);
-    setVisible(false);
+    hidePanel();
   }
 
   function acceptAll() {
@@ -188,10 +198,7 @@ export function CookiePanel({
 
             <button
               type="button"
-              onClick={() => {
-                setVisible(false);
-                setShowPrefs(false);
-              }}
+              onClick={hidePanel}
               className="flex size-8 shrink-0 items-center justify-center rounded-md text-neutral-400 transition hover:bg-white/10 hover:text-white"
               aria-label="Fechar aviso de cookies"
             >
