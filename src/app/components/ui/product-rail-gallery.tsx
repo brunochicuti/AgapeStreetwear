@@ -1315,7 +1315,7 @@ const comprarAgora = () => {
   );
   return createPortal(
     <div ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby={titleId} className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto p-3 pt-14 text-foreground md:items-center md:p-6" onKeyDown={onKeyDown}>
-      <div aria-hidden="true" className={`absolute inset-0 bg-background/90 backdrop-blur-xl transition-opacity duration-300 motion-reduce:transition-none ${shown ? "opacity-100" : "opacity-0"}`} onClick={dismiss} />
+      <div aria-hidden="true" className={`absolute inset-0 bg-[#F5F1E8] backdrop-blur-xl transition-opacity duration-300 motion-reduce:transition-none ${shown ? "opacity-100" : "opacity-0"}`} onClick={dismiss} />
       <button ref={closeRef} type="button" onClick={dismiss} className={`absolute right-3 top-3 z-10 inline-flex min-h-11 min-w-11 items-center justify-center gap-2 rounded-full border border-red-400 bg-red-600 px-4 py-2 text-sm font-bold tracking-wide text-white shadow-lg outline-none transition-[opacity,background-color] duration-300 hover:bg-red-700 focus-visible:ring-2 focus-visible:ring-red-400 motion-reduce:transition-none md:right-5 md:top-5 ${shown ? "opacity-100" : "opacity-0"}`}>
         {labels.close}
         <svg aria-hidden="true" viewBox="0 0 16 16" className="size-3.5" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"><path d="M3 3l10 10M13 3L3 13" /></svg>
