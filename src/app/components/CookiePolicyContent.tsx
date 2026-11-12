@@ -87,28 +87,33 @@
         </section>
 
         <section>
-        <h2 className="mb-3 text-xl font-semibold text-black">
+          <h2 className="mb-3 text-xl font-semibold text-black">
             5. Cookies necessários e opcionais
-        </h2>
-        <p>
-            Tecnologias necessárias ao funcionamento da loja, à autenticação,
-            à segurança e ao processamento de compras podem ser utilizadas
-            para fornecer os serviços solicitados pelo usuário.
-        </p>
-        <p>
-            O banner de preferências permite registrar escolhas para as
-            categorias funcionais, análise e marketing. As categorias
-            opcionais começam desativadas e podem ser aceitas ou rejeitadas
-            pelo usuário.
-        </p>
-        <p>
-            Atualmente, a auditoria do código não identificou ferramentas
-            próprias de Google Analytics, Meta Pixel ou Microsoft Clarity.
-            As preferências registradas ainda não estão conectadas a
-            ferramentas opcionais de análise ou publicidade. Caso novas
-            integrações sejam adicionadas, seu funcionamento deverá respeitar
-            as escolhas do usuário.
-        </p>
+          </h2>
+          <p>
+            Algumas tecnologias são utilizadas para permitir o funcionamento
+            da loja, a autenticação de usuários, a segurança das sessões e
+            o processamento de pagamentos. Essas tecnologias podem ser
+            necessárias para fornecer os serviços solicitados.
+          </p>
+          <p>
+            O banner permite registrar preferências para as categorias
+            funcional, análise e marketing. As categorias opcionais começam
+            desativadas, e o usuário pode aceitar ou rejeitar essas
+            preferências.
+          </p>
+          <p>
+            Atualmente, as preferências registradas pelo banner não estão
+            conectadas a ferramentas opcionais de análise ou publicidade.
+            A auditoria do código não identificou integrações próprias
+            com Google Analytics, Meta Pixel ou Microsoft Clarity.
+          </p>
+          <p>
+            A rejeição das categorias opcionais não desativa as tecnologias
+            necessárias à autenticação, segurança e funcionamento dos
+            pagamentos. Caso novas ferramentas opcionais sejam adicionadas,
+            seu funcionamento deverá respeitar as escolhas do usuário.
+          </p>
         </section>
 
         <section>

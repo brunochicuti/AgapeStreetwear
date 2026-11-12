@@ -39,7 +39,8 @@
           </p>
           <p>
             O responsável pela operação da loja é Jonathan Leite Da Silva,
-            com localidade em Dourados, Mato Grosso do Sul, Brasil.
+            pessoa física, com localidade em Dourados, Mato Grosso do Sul,
+            Brasil.
           </p>
           <p>
             Contato: contato@agapestreetwear.com.br.
@@ -81,6 +82,11 @@
             indisponibilidade, a loja entrará em contato com o cliente
             para orientar a solução, respeitando a legislação aplicável.
           </p>
+          <p>
+            As camisetas são produzidas sob encomenda. O prazo estimado
+            de produção é de 2 a 3 dias úteis após a confirmação do pedido,
+            podendo variar conforme a demanda.
+          </p>
         </section>
 
         <section>
@@ -108,9 +114,13 @@
             6. Entrega e frete
           </h2>
           <p>
-            As compras são realizadas com entrega no endereço informado
-            pelo cliente. O frete atualmente é fixo no valor de R$ 5,00
-            por pedido, apresentado no checkout.
+            Atualmente, as entregas são realizadas exclusivamente em
+            Dourados/MS e Maracaju/MS, diretamente pelo responsável
+            pela loja, no endereço informado pelo cliente.
+          </p>
+          <p>
+            O frete é fixo no valor de R$ 5,00 por pedido, apresentado
+            no checkout.
           </p>
           <p>
             O cliente deve conferir se os dados de endereço e contato
@@ -118,10 +128,9 @@
             prejudicar a entrega.
           </p>
           <p>
-            Atualmente, a entrega é realizada diretamente pelo responsável
-            pela loja. Caso a operação passe a utilizar transportadoras ou
-            outros prestadores, os dados estritamente necessários poderão
-            ser compartilhados para viabilizar a entrega.
+            Caso a operação passe a utilizar transportadoras ou outros
+            prestadores, os dados estritamente necessários poderão ser
+            compartilhados para viabilizar a entrega.
           </p>
         </section>
 
@@ -130,19 +139,52 @@
             7. Trocas, devoluções e direito de arrependimento
           </h2>
           <p>
-            As solicitações de troca, devolução ou cancelamento devem ser
-            encaminhadas pelo canal de atendimento da loja.
+            As solicitações de troca, devolução, cancelamento ou atendimento
+            relacionado a produtos com defeito poderão ser encaminhadas
+            pelo e-mail contato@agapestreetwear.com.br.
+          </p>
+          <p>
+            Como política comercial, a loja aceita solicitações de troca
+            por tamanho em até 7 dias corridos após o recebimento do produto.
+            Essa possibilidade não representa uma troca por outro modelo.
+          </p>
+          <p>
+            Para a troca voluntária por tamanho, o produto deverá estar
+            sem uso, sem lavagem e com a etiqueta original preservada.
+          </p>
+          <p>
+            A devolução da camiseta original será combinada diretamente
+            com o cliente, podendo ocorrer por retirada no endereço
+            informado ou em outro local previamente acordado entre as partes.
+          </p>
+          <p>
+            Na troca voluntária por tamanho, poderá ser cobrada uma taxa
+            de R$ 10,00 referente à nova entrega. Quando necessário,
+            uma nova camiseta será produzida no tamanho solicitado,
+            com prazo estimado de 2 a 3 dias úteis, sujeito à demanda.
+          </p>
+          <p>
+            A taxa e as condições da troca voluntária não se aplicam
+            para restringir o direito legal de arrependimento ou os
+            direitos do consumidor em caso de defeito.
           </p>
           <p>
             Nas compras realizadas pela internet, o consumidor poderá
             exercer o direito de arrependimento no prazo e nas condições
             previstos no artigo 49 do Código de Defesa do Consumidor.
+            Nesses casos, será realizado o reembolso dos valores pagos,
+            incluindo o frete, conforme a legislação aplicável.
           </p>
           <p>
-            Produtos com defeito e demais solicitações serão tratados
-            conforme os direitos e prazos previstos na legislação
-            consumerista. Nenhuma regra destes Termos limita direitos
-            garantidos por lei.
+            O reembolso será realizado preferencialmente pelo mesmo meio
+            de pagamento utilizado na compra, observados os procedimentos
+            da plataforma de pagamento.
+          </p>
+          <p>
+            Produtos com defeito serão tratados conforme os direitos
+            e prazos previstos na legislação consumerista. A loja avaliará
+            a solicitação e oferecerá a solução legalmente aplicável.
+            Nenhuma regra destes Termos limita direitos garantidos por lei.
           </p>
         </section>
 
