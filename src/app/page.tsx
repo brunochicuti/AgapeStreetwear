@@ -49,6 +49,11 @@ async function getProducts(): Promise<ProductType[]> {
         description: product.description,
         currency: price.data[0]?.currency,
         etiqueta: calcularEtiqueta(product),
+        estoque:
+          product.metadata?.estoque?.trim() &&
+          !Number.isNaN(Number(product.metadata.estoque))
+            ? Number(product.metadata.estoque)
+            : null,
       };
     })
   );

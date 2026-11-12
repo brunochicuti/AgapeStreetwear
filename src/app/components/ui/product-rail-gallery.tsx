@@ -1155,6 +1155,10 @@ function Detail({ uid, item, index, total, hanger, labels, reduced, source, onLi
   const [side, setSide] = React.useState("front" as "front" | "back");
   const [shown, setShown] = React.useState(false);
   const [quantity, setQuantity] = React.useState(1);
+  // Limite de estoque (vem do metadata "estoque" da Stripe). Sem estoque definido, não limita.
+  const estoque = item.product?.estoque ?? null;
+  const maxQtd = estoque === null ? Infinity : Math.max(0, estoque);
+  const semEstoque = maxQtd === 0;
   const angle = React.useRef({ value: 0, target: 0, velocity: 0, raf: 0, last: 0, dragging: false, startX: 0, startAngle: 0 });
   const closing = React.useRef(false);
   const kind = item.kind ?? "tee";
@@ -1168,16 +1172,16 @@ function Detail({ uid, item, index, total, hanger, labels, reduced, source, onLi
   const addProduct = useCartStore((state) => state.addProduct);
 
 const adicionarAoCarrinho = () => {
-  if (!item.product || item.product.price === null) return;
+  if (!item.product || item.product.price === null || semEstoque) return;
 
-  addProduct(item.product, quantity);
+  addProduct(item.product, Math.min(quantity, maxQtd));
   useCartStore.setState({ isOpen: true });
 };
 
 const comprarAgora = () => {
-  if (!isLoaded || !item.product || item.product.price === null) return;
+  if (!isLoaded || !item.product || item.product.price === null || semEstoque) return;
 
-  addProduct(item.product, quantity);
+  addProduct(item.product, Math.min(quantity, maxQtd));
 
   if (!user) {
     router.push("/sign-in?redirectUrl=/checkout");
@@ -1364,16 +1368,23 @@ const comprarAgora = () => {
 
                 <button
                     type="button"
-                    onClick={() => setQuantity((q) => q + 1)}
+                    onClick={() => setQuantity((q) => Math.min(maxQtd, q + 1))}
+                    disabled={quantity >= maxQtd}
                     aria-label="Aumentar quantidade"
-                    className="px-4 py-3 text-foreground hover:bg-muted"
+                    className="px-4 py-3 text-foreground hover:bg-muted disabled:opacity-30"
                 >
                     +
                 </button>
                 </div>
+
+                {Number.isFinite(maxQtd) && maxQtd <= 5 && (
+                  <p className="text-xs text-muted-foreground">
+                    {semEstoque ? "Produto esgotado" : maxQtd === 1 ? "Resta apenas 1 unidade" : `Restam apenas ${maxQtd} unidades`}
+                  </p>
+                )}
             </div>
 
-            <div className="flex flex-wrap justify-center gap-3 md:justify-start">
+            <div className={`flex flex-wrap justify-center gap-3 md:justify-start ${semEstoque ? "pointer-events-none opacity-40" : ""}`}>
                 <LiquidMetalButton
                 label="Adicionar à sacola"
                 onClick={adicionarAoCarrinho}

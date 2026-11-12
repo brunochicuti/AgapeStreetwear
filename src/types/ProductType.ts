@@ -7,4 +7,5 @@ export type ProductType ={
     description:string | null;
     currency?:string;
     etiqueta?: string | null;
+    estoque?: number | null;
 }
