@@ -1,4 +1,4 @@
-
+import { Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
 import Stripe from "stripe";
 import prisma from "@/src/lib/prisma";
@@ -100,6 +100,28 @@ export async function POST(request: Request) {
         throw new Error("Metadados do PaymentIntent não correspondem ao pedido.");
       }
 
+      if (paymentIntent.metadata.userId) {
+        const usuarioDoPedido = await tx.user.findUnique({
+          where: { id: order.userId },
+          select: { externalId: true },
+        });
+
+        if (
+          !usuarioDoPedido ||
+          usuarioDoPedido.externalId !== paymentIntent.metadata.userId
+        ) {
+          throw new Error("Usuário do PaymentIntent não corresponde ao pedido.");
+        }
+      }
+
+      // Confere se a chave de checkout corresponde ao pedido.
+      if (
+        paymentIntent.metadata.checkoutKey &&
+        paymentIntent.metadata.checkoutKey !== order.checkoutKey
+      ) {
+        throw new Error("Chave de checkout do PaymentIntent não corresponde ao pedido.");
+      }
+
       // Registra o evento dentro da mesma transação.
       await tx.stripeEvent.create({
         data: {
@@ -143,6 +165,16 @@ export async function POST(request: Request) {
               moedaStripe: paymentIntent.currency,
             }
           );
+
+          await tx.order.updateMany({
+            where: {
+              id: order.id,
+              status: { not: "paid" },
+            },
+            data: {
+              status: "review_required",
+            },
+          });
 
           return "amount_mismatch";
         }
@@ -205,17 +237,25 @@ export async function POST(request: Request) {
       result: resultado,
     });
   } catch (error) {
-    if (
-      error &&
-      typeof error === "object" &&
-      "code" in error &&
-      error.code === "P2002"
-    ) {
+  if (
+    error instanceof Prisma.PrismaClientKnownRequestError &&
+    error.code === "P2002"
+  ) {
+    const target = error.meta?.target;
+
+    const duplicidadeDeEvento =
+      Array.isArray(target)
+        ? target.includes("stripeEventId")
+        : typeof target === "string" &&
+          target.includes("stripeEventId");
+
+    if (duplicidadeDeEvento) {
       return NextResponse.json({
         received: true,
         duplicate: true,
       });
     }
+  }
 
     console.error("Erro ao processar webhook:", error);
 

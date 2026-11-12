@@ -82,10 +82,11 @@ export default function PedidoConfirmado() {
           resultado.order.status === "paid";
 
         if (aprovado) {
-          if (!carrinhoLimpo) {
-            clearCart();
-            carrinhoLimpo = true;
-          }
+        if (!carrinhoLimpo) {
+          clearCart();
+          sessionStorage.removeItem("agape_checkout_key");
+          carrinhoLimpo = true;
+        }
 
           setStatus("Pagamento aprovado! Seu pedido foi confirmado.");
           setCarregando(false);

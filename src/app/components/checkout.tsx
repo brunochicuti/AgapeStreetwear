@@ -255,12 +255,62 @@ export default function Checkout() {
   const [comprador, setComprador] =
     useState<DadosComprador>(dadosIniciais);
 
-  const [clientSecret, setClientSecret] = useState("");
-  const [checkoutKey, setCheckoutKey] = useState("");
+const [clientSecret, setClientSecret] = useState("");
+const [checkoutKey, setCheckoutKey] = useState("");
+
+useEffect(() => {
+  const chaveSalva = sessionStorage.getItem("agape_checkout_key");
+
+  if (chaveSalva) {
+    setCheckoutKey(chaveSalva);
+  }
+}, []);
   const [erro, setErro] = useState("");
   const [carregando, setCarregando] = useState(false);
   const [consultandoCep, setConsultandoCep] = useState(false);
   const [etapa, setEtapa] = useState<Etapa>("pessoais");
+
+  const assinaturaCarrinho = JSON.stringify(
+  cart
+    .map((produto) => ({
+      id: produto.id,
+      quantity: produto.quantity ?? 1,
+    }))
+    .sort((a, b) => a.id.localeCompare(b.id))
+);
+
+useEffect(() => {
+  const assinaturaAnterior = sessionStorage.getItem(
+    "agape_checkout_cart"
+  );
+
+  const chaveSalva = sessionStorage.getItem("agape_checkout_key");
+
+  if (
+    assinaturaAnterior !== null &&
+    assinaturaAnterior !== assinaturaCarrinho
+  ) {
+    sessionStorage.removeItem("agape_checkout_key");
+
+    setCheckoutKey("");
+    setClientSecret("");
+    setPaymentIntent("");
+
+    if (etapa === "pagamento") {
+      setEtapa("entrega");
+    }
+  } else if (assinaturaAnterior === null && chaveSalva) {
+    // Invalida chaves antigas que não possuem identificação do carrinho.
+    sessionStorage.removeItem("agape_checkout_key");
+    setCheckoutKey("");
+    setPaymentIntent("");
+  }
+
+  sessionStorage.setItem(
+    "agape_checkout_cart",
+    assinaturaCarrinho
+  );
+}, [assinaturaCarrinho]);
 
   const moeda = "BRL";
 
@@ -287,15 +337,11 @@ export default function Checkout() {
     setEtapa("pessoais");
   }
 
-  function voltarParaEntrega() {
-    // Invalida o estado local do pagamento para permitir
-    // uma nova preparação caso os dados sejam alterados.
-    setClientSecret("");
-    setCheckoutKey("");
-    setPaymentIntent("");
-    setErro("");
-    setEtapa("entrega");
-  }
+    function voltarParaEntrega() {
+      setClientSecret("");
+      setErro("");
+      setEtapa("entrega");
+    }
 
   async function consultarCep() {
     const cep = comprador.zipCode.replace(/\D/g, "");
@@ -363,11 +409,13 @@ export default function Checkout() {
     setErro("");
 
     try {
-      const chaveAtual = checkoutKey || crypto.randomUUID();
+        const chaveAtual =
+          checkoutKey ||
+          sessionStorage.getItem("agape_checkout_key") ||
+          crypto.randomUUID();
 
-      if (!checkoutKey) {
+        sessionStorage.setItem("agape_checkout_key", chaveAtual);
         setCheckoutKey(chaveAtual);
-      }
 
       const response = await fetch("/api/create-payment-intent", {
         method: "POST",
@@ -500,14 +548,15 @@ export default function Checkout() {
                       />
                     </div>
 
-                    <Campo
-                      label="CPF"
-                      name="cpf"
-                      value={comprador.cpf}
-                      onChange={atualizarCampo}
-                      placeholder="Somente números"
-                      maxLength={14}
-                    />
+                      <Campo
+                        label="CPF (opcional)"
+                        name="cpf"
+                        value={comprador.cpf}
+                        onChange={atualizarCampo}
+                        placeholder="Somente números"
+                        maxLength={14}
+                        required={false}
+                      />
 
                     <Campo
                       label="Telefone"

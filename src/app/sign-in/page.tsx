@@ -13,6 +13,9 @@ export default async function SingInPage({
 }: SingInPageProps) {
   const { redirectUrl } = await searchParams;
 
+  const safeRedirectUrl =
+  redirectUrl === "/checkout" ? "/checkout" : "/";
+
   return (
     <section className="py-14">
       <div className="container mx-auto px-4">
@@ -20,7 +23,7 @@ export default async function SingInPage({
           <SignIn
             routing="hash"
             signUpUrl="/sign-up"
-            forceRedirectUrl={redirectUrl || "/"}
+            forceRedirectUrl={safeRedirectUrl}
           />
         </div>
       </div>

@@ -41,7 +41,14 @@ export async function GET(req: Request) {
         userId: user.id,
       },
       include: {
-        products: true,
+        products: {
+          select: {
+            id: true,
+            name: true,
+            quantity: true,
+            price: true,
+          },
+        },
       },
     });
 
@@ -78,6 +85,21 @@ export async function GET(req: Request) {
       return Response.json(
         { error: "Não foi possível validar o pagamento." },
         { status: 403 }
+      );
+    }
+
+    if (
+      paymentIntent.metadata.checkoutKey &&
+      paymentIntent.metadata.checkoutKey !== order.checkoutKey
+    ) {
+      console.error(
+        "Chave de checkout divergente:",
+        order.id
+      );
+
+      return Response.json(
+        { error: "Não foi possível validar o pagamento." },
+        { status: 409 }
       );
     }
 
