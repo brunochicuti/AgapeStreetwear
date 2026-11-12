@@ -15,8 +15,8 @@ const navItems = [
     icon: Home,
   },
   {
-    label: "Acompanhar pedido",
-    href: "/acompanhar-pedido",
+    label: "/pedido-confirmado",
+    href: "/pedido-confirmado",
     icon: PackageSearch,
   },
   {
@@ -51,8 +51,8 @@ function Navbar() {
             const isActive =
               item.href === "/"
                 ? pathname === "/"
-                : item.href === "/acompanhar-pedido"
-                  ? pathname === "/acompanhar-pedido"
+                : item.href === "/pedido-confirmado"
+                  ? pathname === "/pedido-confirmado"
                   : false;
 
             return (
