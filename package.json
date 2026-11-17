@@ -6,9 +6,7 @@
     "dev": "prisma generate && next dev",
     "build": "prisma generate && prisma migrate deploy && next build",
     "start": "next start",
-    "lint": "eslint",
-    "postinstall": "prisma skills sync || exit 0",
-    "contract:emit": "prisma contract emit"
+    "lint": "eslint"
   },
   "dependencies": {
     "@clerk/localizations": "^4.24.3",
@@ -24,7 +22,7 @@
     "dotenv": "^18.0.9",
     "framer-motion": "^14.11.1",
     "lucide-react": "^1.70.0",
-    "next": "16.4.3",
+    "next": "16.4.6",
     "react": "19.3.0",
     "react-dom": "19.3.0",
     "stripe": "^23.0.1",
@@ -39,10 +37,13 @@
     "@types/react-dom": "^19",
     "autoprefixer": "^10.6.2",
     "eslint": "^9",
-    "eslint-config-next": "16.4.3",
+    "eslint-config-next": "16.4.6",
     "postcss": "^8.5.32",
     "prisma": "^6.19.3",
     "tailwindcss": "^4.3.3",
     "typescript": "^5"
+  },
+  "overrides": {
+    "deepmerge-ts": "^8.0.2"
   }
 }
