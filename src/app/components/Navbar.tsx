@@ -5,8 +5,9 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Show, SignInButton, UserButton } from "@clerk/nextjs";
 import { motion } from "framer-motion";
-import { Home, PackageSearch, MessageCircle } from "lucide-react";
+import { Home, PackageSearch, MessageCircle, ShieldCheck } from "lucide-react";
 import Cart from "./Cart";
+import { useEffect, useState } from "react";
 
 const navItems = [
   {
@@ -29,6 +30,15 @@ const navItems = [
 function Navbar() {
   const pathname = usePathname();
 
+  const [isAdmin, setIsAdmin] = useState(false);
+
+useEffect(() => {
+  fetch("/api/admin/verificar")
+    .then((response) => response.json())
+    .then((data) => setIsAdmin(data.isAdmin === true))
+    .catch(() => setIsAdmin(false));
+}, []);
+
   return (
     <header className="fixed top-0 left-0 w-full z-50 bg-black border-b border-white/10">
       <nav className="max-w-[1600px] mx-auto px-4 md:px-8 min-h-[76px] flex flex-wrap items-center justify-between gap-3 py-3">
@@ -44,6 +54,41 @@ function Navbar() {
 
         {/* NAVEGAÇÃO */}
         <div className="flex items-center justify-center gap-1 md:gap-3 order-3 md:order-2 w-full md:w-auto">
+
+          {isAdmin && (
+          <Link
+            href="/admin"
+            className="relative"
+          >
+            <motion.div
+              whileHover={{ scale: 1.04 }}
+              whileTap={{ scale: 0.97 }}
+              transition={{ duration: 0.2 }}
+              className={`
+                relative flex items-center gap-2
+                px-3 md:px-4 py-2.5 rounded-full
+                text-[10px] md:text-xs font-semibold
+                uppercase tracking-wider
+                transition-colors duration-300
+                ${
+                  pathname.startsWith("/admin")
+                    ? "bg-red-600/15 text-white"
+                    : "text-white/60 hover:text-white hover:bg-white/5"
+                }
+              `}
+            >
+              <ShieldCheck size={15} />
+              <span>Administrador</span>
+
+              {pathname.startsWith("/admin") && (
+                <motion.span
+                  layoutId="activeNavbar"
+                  className="absolute bottom-0 left-1/2 -translate-x-1/2 w-5 h-[2px] bg-red-600 rounded-full"
+                />
+              )}
+            </motion.div>
+          </Link>
+        )}
 
           {navItems.map((item) => {
             const Icon = item.icon;

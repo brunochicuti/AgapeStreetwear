@@ -150,7 +150,7 @@ export default function AdminPage() {
   }
 
   return (
-    <main className="min-h-screen bg-neutral-950 px-5 py-10 text-white">
+    <main className="min-h-screen bg-neutral-950 px-6 pt-32 pb-10 text-white">
       <div className="mx-auto max-w-6xl">
         <header className="mb-10 flex flex-wrap items-center justify-between gap-4">
           <div>
