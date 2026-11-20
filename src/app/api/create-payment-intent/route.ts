@@ -607,23 +607,42 @@ if (!produtosIguais) {
       }
 
       const order = await prisma.$transaction(async (tx) => {
-        const atualizacao = await tx.order.updateMany({
+        const dadosAtualizacao = {
+          ...dadosPedido,
+          ...dadosFinanceiros,
+          currency: "brl",
+          status: "pending",
+        };
+
+        const reabertura = await tx.order.updateMany({
           where: {
             id: checkoutExistente.id,
-            status: {
-              in: ["pending", "failed"],
-            },
+            status: "failed",
           },
-          data: {
-            ...dadosPedido,
-            ...dadosFinanceiros,
-            currency: "brl",
-            status: "pending",
-          },
+          data: dadosAtualizacao,
         });
 
-        if (atualizacao.count === 0) {
-          return null;
+        if (reabertura.count > 0) {
+          await tx.orderStatusHistory.create({
+            data: {
+              orderId: checkoutExistente.id,
+              fromStatus: "failed",
+              toStatus: "pending",
+              source: "checkout",
+            },
+          });
+        } else {
+          const atualizacaoPendente = await tx.order.updateMany({
+            where: {
+              id: checkoutExistente.id,
+              status: "pending",
+            },
+            data: dadosAtualizacao,
+          });
+
+          if (atualizacaoPendente.count === 0) {
+            return null;
+          }
         }
 
         return tx.order.update({
@@ -695,6 +714,13 @@ if (!produtosIguais) {
           paymentIntentID: paymentIntent.id,
           items: {
             create: productData,
+          },
+          statusHistory: {
+            create: {
+              fromStatus: null,
+              toStatus: "pending",
+              source: "checkout",
+            },
           },
         },
       });

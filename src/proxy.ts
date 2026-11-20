@@ -12,9 +12,24 @@ const isPublicRoute = createRouteMatcher([
   "/api/webhooks(.*)",
 ]);
 
+const isAdminRoute = createRouteMatcher([
+  "/admin(.*)",
+]);
+
 export default clerkMiddleware(async (auth, req) => {
   if (!isPublicRoute(req)) {
     await auth.protect();
+  }
+
+  if (isAdminRoute(req)) {
+    const { userId } = await auth();
+    const adminId = process.env.ADMIN_CLERK_USER_ID;
+
+    if (!userId || !adminId || userId !== adminId) {
+      return new Response("Acesso não autorizado.", {
+        status: 403,
+      });
+    }
   }
 });
 

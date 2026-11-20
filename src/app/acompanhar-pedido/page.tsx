@@ -14,6 +14,12 @@ type Produto = {
   image: string | null;
 };
 
+type EventoStatus = {
+  fromStatus: string | null;
+  toStatus: string;
+  createdAt: string;
+};
+
 type Pedido = {
   id: string;
   status: string;
@@ -23,6 +29,7 @@ type Pedido = {
   currency: string;
   createdDate: string;
   products: Produto[];
+  statusHistory: EventoStatus[];
 };
 
 function formatarPreco(valor: number, moeda: string) {
@@ -50,6 +57,60 @@ function corStatus(status: string) {
   if (status === "review_required") return "bg-orange-100 text-orange-700";
 
   return "bg-gray-100 text-gray-700";
+}
+
+function obterNomeStatus(status: string) {
+  const nomes: Record<string, string> = {
+    pending: "Pagamento pendente",
+    paid: "Pagamento aprovado",
+    failed: "Pagamento não aprovado",
+    canceled: "Pedido cancelado",
+    review_required: "Pagamento em análise",
+    preparing: "Pedido em preparação",
+    ready: "Pedido pronto",
+    shipped: "Pedido enviado",
+    delivered: "Pedido entregue",
+  };
+
+  return nomes[status] ?? "Status não identificado";
+}
+
+function HistoricoPedido({
+  historico,
+}: {
+  historico: EventoStatus[];
+}) {
+  if (!historico?.length) {
+    return (
+      <p className="text-sm text-gray-500">
+        Nenhuma atualização disponível.
+      </p>
+    );
+  }
+
+  return (
+    <div className="space-y-5">
+      {historico.map((evento, index) => (
+        <div key={`${evento.toStatus}-${evento.createdAt}-${index}`} className="flex gap-3">
+          <div className="flex flex-col items-center">
+            <span className="h-3 w-3 rounded-full bg-black" />
+            {index !== historico.length - 1 && (
+              <span className="mt-1 min-h-8 w-px flex-1 bg-gray-300" />
+            )}
+          </div>
+
+          <div className="pb-2">
+            <p className="text-sm font-bold">
+              {obterNomeStatus(evento.toStatus)}
+            </p>
+            <p className="mt-1 text-xs text-gray-500">
+              {new Date(evento.createdAt).toLocaleString("pt-BR")}
+            </p>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
 }
 
 function ListaProdutos({
@@ -251,6 +312,14 @@ export default function AcompanharPedidoPage() {
               <p className={`mt-3 inline-flex rounded-full px-4 py-2 text-sm font-bold ${corStatus(pedido.status)}`}>
                 {obterStatusPagamento(pedido.status)}
               </p>
+            </section>
+
+            <section className="border-b border-gray-200 py-6">
+            <h2 className="mb-5 text-sm font-bold uppercase tracking-wider">
+                Histórico do pedido
+            </h2>
+
+            <HistoricoPedido historico={pedido.statusHistory} />
             </section>
 
             <section className="py-6">

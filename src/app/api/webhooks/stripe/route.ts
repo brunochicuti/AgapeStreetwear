@@ -183,10 +183,25 @@ export async function POST(request: Request) {
             }
           );
 
+          const pedidoAntes = await tx.order.findUnique({
+            where: { id: order.id },
+            select: { status: true },
+          });
+
+          if (!pedidoAntes) {
+            throw new Error("Pedido não encontrado durante a revisão financeira.");
+          }
+
+          if (!["pending", "failed"].includes(pedidoAntes.status)) {
+            return pedidoAntes.status === "paid"
+              ? "already_paid_amount_mismatch"
+              : "amount_mismatch_requires_manual_review";
+          }
+
           const pedidosEmRevisao = await tx.order.updateMany({
             where: {
               id: order.id,
-              status: { in: ["pending", "failed"] },
+              status: pedidoAntes.status,
             },
             data: {
               status: "review_required",
@@ -194,36 +209,55 @@ export async function POST(request: Request) {
           });
 
           if (pedidosEmRevisao.count > 0) {
+            await tx.orderStatusHistory.create({
+              data: {
+                orderId: order.id,
+                fromStatus: pedidoAntes.status,
+                toStatus: "review_required",
+                source: "stripe_webhook",
+              },
+            });
+
             return "amount_mismatch";
           }
+          return "amount_mismatch_requires_manual_review";
+          }
 
-          const pedidoAtual = await tx.order.findUnique({
+          const pedidoAntes = await tx.order.findUnique({
             where: { id: order.id },
             select: { status: true },
           });
 
-          if (!pedidoAtual) {
-            throw new Error("Pedido não encontrado durante a revisão financeira.");
+          if (!pedidoAntes) {
+            throw new Error("Pedido não encontrado antes da aprovação.");
           }
 
-          return pedidoAtual.status === "paid"
-            ? "already_paid_amount_mismatch"
-            : "amount_mismatch_requires_manual_review";
-        }
+          const pagamentoAtualizado = ["pending", "failed"].includes(
+            pedidoAntes.status
+          )
+            ? await tx.order.updateMany({
+                where: {
+                  id: order.id,
+                  status: pedidoAntes.status,
+                },
+                data: {
+                  status: "paid",
+                },
+              })
+            : { count: 0 };
 
-        const pagamentoAtualizado = await tx.order.updateMany({
-          where: {
-            id: order.id,
-            status: { in: ["pending", "failed"] },
-          },
-          data: {
-            status: "paid",
-          },
-        });
+          if (pagamentoAtualizado.count > 0) {
+            await tx.orderStatusHistory.create({
+              data: {
+                orderId: order.id,
+                fromStatus: pedidoAntes.status,
+                toStatus: "paid",
+                source: "stripe_webhook",
+              },
+            });
 
-        if (pagamentoAtualizado.count > 0) {
-          return "paid";
-        }
+            return "paid";
+          }
 
         const pedidoAtual = await tx.order.findUnique({
           where: { id: order.id },
@@ -256,7 +290,20 @@ export async function POST(request: Request) {
       }
 
       if (event.type === "payment_intent.payment_failed") {
-        await tx.order.updateMany({
+        const pedidoAntes = await tx.order.findUnique({
+          where: { id: order.id },
+          select: { status: true },
+        });
+
+        if (!pedidoAntes) {
+          throw new Error("Pedido não encontrado antes de registrar a falha.");
+        }
+
+        if (pedidoAntes.status !== "pending") {
+          return "status_not_eligible";
+        }
+
+        const pagamentoAtualizado = await tx.order.updateMany({
           where: {
             id: order.id,
             status: "pending",
@@ -266,23 +313,60 @@ export async function POST(request: Request) {
           },
         });
 
-        return "failed";
+        if (pagamentoAtualizado.count > 0) {
+          await tx.orderStatusHistory.create({
+            data: {
+              orderId: order.id,
+              fromStatus: "pending",
+              toStatus: "failed",
+              source: "stripe_webhook",
+            },
+          });
+
+          return "failed";
+        }
+
+        return "status_not_eligible";
       }
 
       if (event.type === "payment_intent.canceled") {
-        await tx.order.updateMany({
+        const pedidoAntes = await tx.order.findUnique({
+          where: { id: order.id },
+          select: { status: true },
+        });
+
+        if (!pedidoAntes) {
+          throw new Error("Pedido não encontrado antes do cancelamento.");
+        }
+
+        if (!["pending", "failed"].includes(pedidoAntes.status)) {
+          return "status_not_eligible";
+        }
+
+        const pagamentoAtualizado = await tx.order.updateMany({
           where: {
             id: order.id,
-            status: {
-              in: ["pending", "failed"],
-            },
+            status: pedidoAntes.status,
           },
           data: {
             status: "canceled",
           },
         });
 
-        return "canceled";
+        if (pagamentoAtualizado.count > 0) {
+          await tx.orderStatusHistory.create({
+            data: {
+              orderId: order.id,
+              fromStatus: pedidoAntes.status,
+              toStatus: "canceled",
+              source: "stripe_webhook",
+            },
+          });
+
+          return "canceled";
+        }
+
+        return "status_not_eligible";
       }
 
       return "ignored";

@@ -57,6 +57,22 @@ model Order {
 
   trackingTokenHash      String?   @unique
   trackingTokenCreatedAt DateTime?
+
+  statusHistory OrderStatusHistory[]
+}
+
+model OrderStatusHistory {
+  id          String   @id @default(cuid())
+  orderId     String
+  order       Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  fromStatus  String?
+  toStatus    String
+  source      String
+  changedBy   String?
+  createdAt   DateTime @default(now())
+
+  @@index([orderId, createdAt])
 }
 
 model OrderItem {

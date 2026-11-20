@@ -5,7 +5,7 @@ import { connection } from "next/server";
 
 export async function GET() {
     await connection();
-    
+
   try {
     const { userId } = await auth();
 
@@ -45,6 +45,16 @@ export async function GET() {
             image: true,
           },
         },
+        statusHistory: {
+          orderBy: {
+            createdAt: "asc",
+          },
+          select: {
+            fromStatus: true,
+            toStatus: true,
+            createdAt: true,
+          },
+        },
       },
     });
 
@@ -58,6 +68,11 @@ export async function GET() {
         amount: order.amount,
         currency: order.currency,
         createdDate: order.createdDate,
+        statusHistory: order.statusHistory.map((history) => ({
+          fromStatus: history.fromStatus,
+          toStatus: history.toStatus,
+          createdAt: history.createdAt,
+        })),
         products: order.items.map((item) => ({
             id: item.id,
             name: item.name,

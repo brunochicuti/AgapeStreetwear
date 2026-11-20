@@ -1,4 +1,4 @@
-
+﻿
 import { auth } from "@clerk/nextjs/server";
 import prisma from "@/src/lib/prisma";
 import { stripe } from "@/src/lib/stripe";
@@ -126,46 +126,70 @@ export async function GET(req: Request) {
     let statusPedido = order.status;
 
     // SÃ³ aprova pedidos pendentes ou com tentativa anterior falha.
-    if (pagamentoValido) {
-      const pagamentoAtualizado = await prisma.order.updateMany({
-        where: {
-          id: order.id,
-          status: {
-            in: ["pending", "failed"],
-          },
-        },
+if (pagamentoValido) {
+  const statusFinal = await prisma.$transaction(async (tx) => {
+    const pedidoAntes = await tx.order.findUnique({
+      where: { id: order.id },
+      select: { status: true },
+    });
+
+    if (!pedidoAntes) {
+      return null;
+    }
+
+    if (!["pending", "failed"].includes(pedidoAntes.status)) {
+      return pedidoAntes.status;
+    }
+
+    const pagamentoAtualizado = await tx.order.updateMany({
+      where: {
+        id: order.id,
+        status: pedidoAntes.status,
+      },
+      data: {
+        status: "paid",
+      },
+    });
+
+    if (pagamentoAtualizado.count > 0) {
+      await tx.orderStatusHistory.create({
         data: {
-          status: "paid",
+          orderId: order.id,
+          fromStatus: pedidoAntes.status,
+          toStatus: "paid",
+          source: "payment_confirmation",
         },
       });
 
-      if (pagamentoAtualizado.count > 0) {
-        statusPedido = "paid";
-      } else {
-        const pedidoAtualizado = await prisma.order.findUnique({
-          where: { id: order.id },
-          select: { status: true },
-        });
-
-        if (!pedidoAtualizado) {
-          throw new Error("Pedido nÃ£o encontrado apÃ³s validar o pagamento.");
-        }
-
-        statusPedido = pedidoAtualizado.status;
-
-        if (
-          statusPedido === "canceled" ||
-          statusPedido === "review_required"
-        ) {
-          console.error(
-            "Pagamento confirmado exige revisÃ£o manual:",
-            order.id,
-            "Status atual:",
-            statusPedido
-          );
-        }
-      }
+      return "paid";
     }
+
+    const pedidoAtual = await tx.order.findUnique({
+      where: { id: order.id },
+      select: { status: true },
+    });
+
+    return pedidoAtual?.status ?? null;
+  });
+
+  if (!statusFinal) {
+    throw new Error("Pedido não encontrado após validar o pagamento.");
+  }
+
+  statusPedido = statusFinal;
+
+  if (
+    statusPedido === "canceled" ||
+    statusPedido === "review_required"
+  ) {
+    console.error(
+      "Pagamento confirmado exige revisão manual:",
+      order.id,
+      "Status atual:",
+      statusPedido
+    );
+  }
+}
 
     return respostaJson({
       order: {
