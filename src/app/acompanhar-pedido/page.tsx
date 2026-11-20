@@ -44,8 +44,12 @@ function obterStatusPagamento(status: string) {
     pending: "Pagamento pendente",
     paid: "Pagamento aprovado",
     failed: "Pagamento não aprovado",
-    canceled: "Pagamento cancelado",
+    canceled: "Pedido cancelado",
     review_required: "Pagamento em análise",
+    preparing: "Em preparação",
+    ready: "Pedido pronto",
+    shipped: "Pedido enviado",
+    delivered: "Pedido entregue",
   };
 
   return statusMap[status] ?? "Status não identificado";
