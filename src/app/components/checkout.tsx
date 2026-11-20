@@ -1,6 +1,9 @@
 
 "use client";
 
+import Image from "next/image";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { loadStripe, StripeElementsOptions } from "@stripe/stripe-js";
 import {
   Elements,
@@ -9,7 +12,7 @@ import {
   useElements,
 } from "@stripe/react-stripe-js";
 import { useCartStore } from "@/src/store";
-import { useEffect, useState, FormEvent } from "react";
+import { useEffect, useState, useRef, FormEvent } from "react";
 
 const stripePromise = loadStripe(
   process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY_LIVE!,
@@ -166,15 +169,18 @@ function FormularioPagamento({
 }) {
   const stripe = useStripe();
   const elements = useElements();
+  const router = useRouter();
 
   const [carregando, setCarregando] = useState(false);
   const [erro, setErro] = useState("");
+  const confirmacaoEmAndamento = useRef(false);
 
   async function finalizarPagamento(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    if (!stripe || !elements || carregando) return;
+    if (!stripe || !elements || confirmacaoEmAndamento.current) return;
 
+    confirmacaoEmAndamento.current = true;
     setCarregando(true);
     setErro("");
 
@@ -188,7 +194,15 @@ function FormularioPagamento({
       });
 
       if (error) {
+        if (error.code === "payment_intent_unexpected_state") {
+        router.push(
+          `/pedido-confirmado?payment_intent_id=${encodeURIComponent(paymentIntentId)}&token=${encodeURIComponent(trackingToken)}`
+        );
+          return;
+        }
+
         setErro(error.message || "Não foi possível concluir o pagamento.");
+        confirmacaoEmAndamento.current = false;
         setCarregando(false);
         return;
       }
@@ -197,17 +211,20 @@ function FormularioPagamento({
         paymentIntent?.status === "succeeded" ||
         paymentIntent?.status === "processing"
       ) {
-    window.location.href =
-    `/pedido-confirmado?payment_intent_id=${encodeURIComponent(paymentIntent.id)}&token=${encodeURIComponent(trackingToken)}`;
+      router.push(
+        `/pedido-confirmado?payment_intent_id=${encodeURIComponent(paymentIntent.id)}&token=${encodeURIComponent(trackingToken)}`
+      );
         return;
       }
 
       setErro("O pagamento ainda não foi confirmado. Verifique os dados.");
+      confirmacaoEmAndamento.current = false;
       setCarregando(false);
-    } catch {
-      setErro("Ocorreu um erro ao processar o pagamento.");
-      setCarregando(false);
-    }
+      } catch {
+        setErro("Ocorreu um erro ao processar o pagamento.");
+        confirmacaoEmAndamento.current = false;
+        setCarregando(false);
+      }
   }
 
   return (
@@ -258,20 +275,17 @@ export default function Checkout() {
     useState<DadosComprador>(dadosIniciais);
 
 const [clientSecret, setClientSecret] = useState("");
-const [checkoutKey, setCheckoutKey] = useState("");
 const [trackingToken, setTrackingToken] = useState("");
 
-useEffect(() => {
-  const chaveSalva = sessionStorage.getItem("agape_checkout_key");
-
-  if (chaveSalva) {
-    setCheckoutKey(chaveSalva);
-  }
-}, []);
   const [erro, setErro] = useState("");
   const [carregando, setCarregando] = useState(false);
   const [consultandoCep, setConsultandoCep] = useState(false);
   const [etapa, setEtapa] = useState<Etapa>("pessoais");
+
+  const etapaExibida: Etapa =
+  etapa === "pagamento" && !paymentIntent
+    ? "entrega"
+    : etapa;
 
   const assinaturaCarrinho = JSON.stringify(
   cart
@@ -294,20 +308,9 @@ useEffect(() => {
     assinaturaAnterior !== assinaturaCarrinho
   ) {
     sessionStorage.removeItem("agape_tracking_token");
-    setTrackingToken("");
-
-    setCheckoutKey("");
-    setClientSecret("");
-    setPaymentIntent("");
-
-    if (etapa === "pagamento") {
-      setEtapa("entrega");
-    }
-  } else if (assinaturaAnterior === null && chaveSalva) {
-    // Invalida chaves antigas que não possuem identificação do carrinho.
     sessionStorage.removeItem("agape_checkout_key");
-    setCheckoutKey("");
-    setPaymentIntent("");
+  } else if (assinaturaAnterior === null && chaveSalva) {
+    sessionStorage.removeItem("agape_checkout_key");
   }
 
   sessionStorage.setItem(
@@ -414,12 +417,10 @@ useEffect(() => {
 
     try {
         const chaveAtual =
-          checkoutKey ||
           sessionStorage.getItem("agape_checkout_key") ||
           crypto.randomUUID();
 
         sessionStorage.setItem("agape_checkout_key", chaveAtual);
-        setCheckoutKey(chaveAtual);
 
       const response = await fetch("/api/create-payment-intent", {
         method: "POST",
@@ -490,12 +491,12 @@ useEffect(() => {
         <p className="mt-3 text-gray-500">
           Adicione produtos antes de finalizar seu pedido.
         </p>
-        <a
+        <Link
           href="/"
           className="mt-6 rounded-lg bg-black px-6 py-3 text-sm font-bold uppercase text-white"
         >
           Voltar à loja
-        </a>
+        </Link>
       </div>
     );
   }
@@ -505,13 +506,13 @@ useEffect(() => {
       <div className="mx-auto max-w-6xl">
       <div className="mb-8 border-b border-gray-200 pb-6">
         <div className="flex items-center gap-5">
-          <a
+          <Link
             href="/"
             className="inline-flex shrink-0 items-center gap-2 rounded-lg border border-black bg-white px-5 py-3 text-xs font-bold uppercase tracking-wider text-black transition hover:bg-black hover:text-white"
           >
             <span aria-hidden="true">←</span>
             Continuar comprando
-          </a>
+          </Link>
 
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.3em] text-gray-400">
@@ -531,9 +532,9 @@ useEffect(() => {
 
         <div className="grid grid-cols-1 gap-10 lg:grid-cols-[1.2fr_0.8fr] lg:gap-16">
           <section className="order-2 lg:order-1">
-            <IndicadorEtapas etapa={etapa} />
+            <IndicadorEtapas etapa={etapaExibida} />
 
-            {etapa === "pessoais" && (
+            {etapaExibida === "pessoais" && (
               <form
                 onSubmit={continuarParaEntrega}
                 className="space-y-8"
@@ -608,7 +609,7 @@ useEffect(() => {
               </form>
             )}
 
-            {etapa === "entrega" && (
+            {etapaExibida === "entrega" && (
               <form
                 onSubmit={continuarParaPagamento}
                 className="space-y-8"
@@ -730,7 +731,7 @@ useEffect(() => {
               </form>
             )}
 
-            {etapa === "pagamento" && (
+            {etapaExibida === "pagamento" && (
               <div className="space-y-6">
                 <div className="border-b border-gray-200 pb-5">
                   <h2 className="text-lg font-black uppercase">
@@ -797,11 +798,13 @@ useEffect(() => {
               {cart.map((produto) => (
                 <div key={produto.id} className="flex gap-4">
                   <div className="h-20 w-16 shrink-0 overflow-hidden rounded-lg bg-gray-200">
-                    <img
-                      src={produto.image}
-                      alt={produto.name}
-                      className="h-full w-full object-cover"
-                    />
+                  <Image
+                    src={produto.image}
+                    alt={produto.name}
+                    width={64}
+                    height={80}
+                    className="h-full w-full object-cover"
+                  />
                   </div>
 
                   <div className="flex min-w-0 flex-1 flex-col justify-center">
