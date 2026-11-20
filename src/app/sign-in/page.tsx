@@ -2,19 +2,28 @@ import { SignIn } from "@clerk/nextjs";
 
 export const instant = false;
 
-type SingInPageProps = {
+type SignInPageProps = {
   searchParams: Promise<{
     redirectUrl?: string;
   }>;
 };
 
-export default async function SingInPage({
+export default async function SignInPage({
   searchParams,
-}: SingInPageProps) {
+}: SignInPageProps) {
   const { redirectUrl } = await searchParams;
 
-  const safeRedirectUrl =
-  redirectUrl === "/checkout" ? "/checkout" : "/";
+  const rotasPermitidas = [
+    "/",
+    "/checkout",
+    "/acompanhar-pedido",
+  ];
+
+  const safeRedirectUrl = rotasPermitidas.includes(
+    redirectUrl ?? ""
+  )
+    ? redirectUrl!
+    : "/";
 
   return (
     <section className="py-14">
