@@ -92,15 +92,30 @@ export async function POST(request: Request) {
         throw new Error("PaymentIntent não corresponde ao pedido.");
       }
 
-      // Confirma que o pedido corresponde aos metadados da cobrança.
+      // Confere se os metadados essenciais correspondem ao pedido.
+      if (
+        !paymentIntent.metadata.userId ||
+        !paymentIntent.metadata.checkoutKey ||
+        !order.checkoutKey ||
+        paymentIntent.metadata.checkoutKey !== order.checkoutKey
+      ) {
+        throw new Error(
+          "Metadados essenciais do PaymentIntent ausentes ou divergentes."
+        );
+      }
+
+      // Se informado, o orderId precisa corresponder ao pedido.
       if (
         paymentIntent.metadata.orderId &&
         paymentIntent.metadata.orderId !== order.id
       ) {
-        throw new Error("Metadados do PaymentIntent não correspondem ao pedido.");
+        throw new Error(
+          "Metadados do PaymentIntent não correspondem ao pedido."
+        );
       }
 
-      if (paymentIntent.metadata.userId) {
+      // Valida o usuário quando o vínculo ainda existe.
+      if (order.userId !== null) {
         const usuarioDoPedido = await tx.user.findUnique({
           where: { id: order.userId },
           select: { externalId: true },
@@ -110,7 +125,9 @@ export async function POST(request: Request) {
           !usuarioDoPedido ||
           usuarioDoPedido.externalId !== paymentIntent.metadata.userId
         ) {
-          throw new Error("Usuário do PaymentIntent não corresponde ao pedido.");
+          throw new Error(
+            "Usuário do PaymentIntent não corresponde ao pedido."
+          );
         }
       }
 
@@ -166,30 +183,76 @@ export async function POST(request: Request) {
             }
           );
 
-          await tx.order.updateMany({
+          const pedidosEmRevisao = await tx.order.updateMany({
             where: {
               id: order.id,
-              status: { not: "paid" },
+              status: { in: ["pending", "failed"] },
             },
             data: {
               status: "review_required",
             },
           });
 
-          return "amount_mismatch";
+          if (pedidosEmRevisao.count > 0) {
+            return "amount_mismatch";
+          }
+
+          const pedidoAtual = await tx.order.findUnique({
+            where: { id: order.id },
+            select: { status: true },
+          });
+
+          if (!pedidoAtual) {
+            throw new Error("Pedido não encontrado durante a revisão financeira.");
+          }
+
+          return pedidoAtual.status === "paid"
+            ? "already_paid_amount_mismatch"
+            : "amount_mismatch_requires_manual_review";
         }
 
-        await tx.order.updateMany({
+        const pagamentoAtualizado = await tx.order.updateMany({
           where: {
             id: order.id,
-            status: { not: "paid" },
+            status: { in: ["pending", "failed"] },
           },
           data: {
             status: "paid",
           },
         });
 
-        return "paid";
+        if (pagamentoAtualizado.count > 0) {
+          return "paid";
+        }
+
+        const pedidoAtual = await tx.order.findUnique({
+          where: { id: order.id },
+          select: { status: true },
+        });
+
+        if (!pedidoAtual) {
+          throw new Error("Pedido não encontrado após a confirmação do pagamento.");
+        }
+
+        if (pedidoAtual.status === "paid") {
+          return "already_paid";
+        }
+
+        if (
+          pedidoAtual.status === "canceled" ||
+          pedidoAtual.status === "review_required"
+        ) {
+          console.error(
+            "Pagamento aprovado exige revisão manual:",
+            order.id,
+            "Status atual:",
+            pedidoAtual.status
+          );
+
+          return "manual_review_required";
+        }
+
+        return "status_not_eligible";
       }
 
       if (event.type === "payment_intent.payment_failed") {

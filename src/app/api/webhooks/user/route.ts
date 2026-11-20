@@ -71,12 +71,59 @@ event = JSON.parse(rawBody) as ClerkWebhookEvent;
   }
 
   // Só precisamos processar eventos de criação e atualização.
-  if (
+    // Processa a exclusão solicitada pelo cliente.
+    if (event.type === "user.deleted") {
+    const deletedUserId = event.data?.id;
+
+    if (!deletedUserId) {
+        return NextResponse.json(
+        { error: "Identificador do usuário ausente." },
+        { status: 400 }
+        );
+    }
+
+    try {
+        const existingUser = await prisma.user.findUnique({
+        where: { externalId: deletedUserId },
+        });
+
+        const deletionRequestedAt =
+        existingUser?.deletionRequestedAt ?? new Date();
+
+        await prisma.user.upsert({
+        where: { externalId: deletedUserId },
+        create: {
+            externalId: deletedUserId,
+            attributes: {},
+            deletionRequestedAt,
+        },
+        update: {
+            attributes: {},
+            deletionRequestedAt,
+        },
+        });
+
+        return NextResponse.json(
+        { received: true, deletionRequested: true },
+        { status: 200 }
+        );
+    } catch (error) {
+        console.error("Erro ao registrar exclusão da conta:", error);
+
+        return NextResponse.json(
+        { error: "Falha ao registrar exclusão." },
+        { status: 500 }
+        );
+    }
+    }
+
+    // Os demais eventos não precisam ser processados.
+    if (
     event.type !== "user.created" &&
     event.type !== "user.updated"
-  ) {
+    ) {
     return NextResponse.json({ received: true }, { status: 200 });
-  }
+    }
 
   const {
     id,
@@ -121,8 +168,15 @@ event = JSON.parse(rawBody) as ClerkWebhookEvent;
       .join(" ");
 
     const existingUser = await prisma.user.findUnique({
-      where: { externalId: id },
+    where: { externalId: id },
     });
+
+    if (existingUser?.deletionRequestedAt) {
+    return NextResponse.json(
+        { received: true, ignored: "account_deletion_requested" },
+        { status: 200 }
+    );
+    }
 
     let stripeCustomerId = existingUser?.stripeCustomerId;
 

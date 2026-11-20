@@ -159,8 +159,10 @@ function IndicadorEtapas({ etapa }: { etapa: Etapa }) {
 
 function FormularioPagamento({
   paymentIntentId,
+  trackingToken,
 }: {
   paymentIntentId: string;
+  trackingToken: string;
 }) {
   const stripe = useStripe();
   const elements = useElements();
@@ -180,7 +182,7 @@ function FormularioPagamento({
       const { error, paymentIntent } = await stripe.confirmPayment({
         elements,
         confirmParams: {
-          return_url: `${window.location.origin}/pedido-confirmado?payment_intent_id=${encodeURIComponent(paymentIntentId)}`,
+          return_url: `${window.location.origin}/pedido-confirmado?payment_intent_id=${encodeURIComponent(paymentIntentId)}&token=${encodeURIComponent(trackingToken)}`,
         },
         redirect: "if_required",
       });
@@ -195,8 +197,8 @@ function FormularioPagamento({
         paymentIntent?.status === "succeeded" ||
         paymentIntent?.status === "processing"
       ) {
-        window.location.href =
-          `/pedido-confirmado?payment_intent_id=${encodeURIComponent(paymentIntent.id)}`;
+    window.location.href =
+    `/pedido-confirmado?payment_intent_id=${encodeURIComponent(paymentIntent.id)}&token=${encodeURIComponent(trackingToken)}`;
         return;
       }
 
@@ -257,6 +259,7 @@ export default function Checkout() {
 
 const [clientSecret, setClientSecret] = useState("");
 const [checkoutKey, setCheckoutKey] = useState("");
+const [trackingToken, setTrackingToken] = useState("");
 
 useEffect(() => {
   const chaveSalva = sessionStorage.getItem("agape_checkout_key");
@@ -290,7 +293,8 @@ useEffect(() => {
     assinaturaAnterior !== null &&
     assinaturaAnterior !== assinaturaCarrinho
   ) {
-    sessionStorage.removeItem("agape_checkout_key");
+    sessionStorage.removeItem("agape_tracking_token");
+    setTrackingToken("");
 
     setCheckoutKey("");
     setClientSecret("");
@@ -444,9 +448,15 @@ useEffect(() => {
         throw new Error("A Stripe não retornou os dados do pagamento.");
       }
 
-      setPaymentIntent(data.paymentIntent.id);
-      setClientSecret(data.paymentIntent.client_secret);
-      setEtapa("pagamento");
+    if (typeof data.trackingToken !== "string" || !data.trackingToken) {
+      throw new Error("Não foi possível preparar o acompanhamento do pedido.");
+    }
+
+    setPaymentIntent(data.paymentIntent.id);
+    setClientSecret(data.paymentIntent.client_secret);
+    setTrackingToken(data.trackingToken);
+    sessionStorage.setItem("agape_tracking_token", data.trackingToken);
+    setEtapa("pagamento");
     } catch (error) {
       setErro(
         error instanceof Error
@@ -756,7 +766,10 @@ useEffect(() => {
                     options={options}
                     stripe={stripePromise}
                   >
-                    <FormularioPagamento paymentIntentId={paymentIntent} />
+                    <FormularioPagamento
+                    paymentIntentId={paymentIntent}
+                    trackingToken={trackingToken}
+                  />
                   </Elements>
                 )}
 

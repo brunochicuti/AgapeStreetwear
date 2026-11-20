@@ -2,6 +2,8 @@
 import { auth } from "@clerk/nextjs/server";
 import prisma from "@/src/lib/prisma";
 import { stripe } from "@/src/lib/stripe";
+import { createHash, createHmac } from "node:crypto";
+import { verificarRateLimitCheckout } from "@/src/lib/rate-limit";
 
 const FRETE_CENTAVOS = 500;
 
@@ -28,12 +30,57 @@ function erroJson(error: string, status: number) {
   return Response.json({ error }, { status });
 }
 
+function gerarDadosTokenAcompanhamento(orderId: string) {
+  const secret = process.env.TRACKING_TOKEN_SECRET;
+
+  if (!secret || Buffer.byteLength(secret) < 32) {
+    throw new Error("Chave de acompanhamento ausente ou inválida.");
+  }
+
+  const token = createHmac("sha256", secret)
+    .update(`agape-order-tracking:${orderId}`)
+    .digest("base64url");
+
+  const tokenHash = createHash("sha256")
+    .update(token)
+    .digest("hex");
+
+  return { token, tokenHash };
+}
+
+async function obterTokenAcompanhamento(orderId: string) {
+  const { token, tokenHash } = gerarDadosTokenAcompanhamento(orderId);
+
+  await prisma.order.updateMany({
+    where: {
+      id: orderId,
+      trackingTokenHash: null,
+    },
+    data: {
+      trackingTokenHash: tokenHash,
+      trackingTokenCreatedAt: new Date(),
+    },
+  });
+
+  const pedido = await prisma.order.findUnique({
+    where: { id: orderId },
+    select: { trackingTokenHash: true },
+  });
+
+  if (!pedido || pedido.trackingTokenHash !== tokenHash) {
+    throw new Error("Não foi possível validar o token de acompanhamento.");
+  }
+
+  return token;
+}
+
 function respostaPagamento(
   paymentIntent: {
     id: string;
     client_secret: string | null;
   },
-  orderId: string
+  orderId: string,
+  trackingToken: string
 ) {
   return Response.json({
     paymentIntent: {
@@ -41,6 +88,7 @@ function respostaPagamento(
       client_secret: paymentIntent.client_secret,
     },
     orderId,
+    trackingToken,
   });
 }
 
@@ -70,42 +118,60 @@ function validarCPF(cpf: string) {
 }
 
 function validarComprador(dados: DadosComprador) {
-  const obrigatorios = [
-    dados.fullName,
-    dados.email,
-    dados.phone,
-    dados.zipCode,
-    dados.street,
-    dados.number,
-    dados.neighborhood,
-    dados.city,
-    dados.state,
+  if (!dados || typeof dados !== "object" || Array.isArray(dados)) {
+    return "Dados do comprador inválidos.";
+  }
+
+  const camposObrigatorios: [string, unknown, number][] = [
+    ["Nome", dados.fullName, 120],
+    ["E-mail", dados.email, 254],
+    ["Telefone", dados.phone, 20],
+    ["CEP", dados.zipCode, 9],
+    ["Rua", dados.street, 120],
+    ["Número", dados.number, 20],
+    ["Bairro", dados.neighborhood, 100],
+    ["Cidade", dados.city, 100],
+    ["Estado", dados.state, 2],
   ];
 
-  if (
-    obrigatorios.some(
-      (valor) => typeof valor !== "string" || !valor.trim()
-    )
-  ) {
-    return "Preencha todos os campos obrigatórios.";
+  for (const [nome, valor, limite] of camposObrigatorios) {
+    if (
+      typeof valor !== "string" ||
+      !valor.trim() ||
+      valor.length > limite
+    ) {
+      return `${nome} inválido ou não informado.`;
+    }
   }
 
   if (
     typeof dados.complement !== "undefined" &&
-    typeof dados.complement !== "string"
+    (typeof dados.complement !== "string" ||
+      dados.complement.length > 100)
   ) {
     return "Complemento inválido.";
   }
 
-if (dados.cpf.trim() && !validarCPF(dados.cpf)) {
-  return "Informe um CPF válido.";
-}
+  if (
+    typeof dados.cpf !== "undefined" &&
+    typeof dados.cpf !== "string"
+  ) {
+    return "CPF inválido.";
+  }
 
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(dados.email)) {
+  const cpf = dados.cpf ?? "";
+
+  if (cpf.trim() && !validarCPF(cpf)) {
+    return "Informe um CPF válido.";
+  }
+
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(dados.email.trim())) {
     return "Informe um e-mail válido.";
   }
 
-  if (dados.phone.replace(/\D/g, "").length < 10) {
+  const telefone = dados.phone.replace(/\D/g, "");
+
+  if (telefone.length < 10 || telefone.length > 13) {
     return "Informe um telefone válido.";
   }
 
@@ -113,12 +179,104 @@ if (dados.cpf.trim() && !validarCPF(dados.cpf)) {
     return "Informe um CEP válido.";
   }
 
-  if (!/^[A-Za-z]{2}$/.test(dados.state)) {
+  if (!/^[A-Za-z]{2}$/.test(dados.state.trim())) {
     return "Informe uma UF válida.";
   }
 
+  const cidade = dados.city
+    .trim()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+
+  if (
+    dados.state.trim().toUpperCase() !== "MS" ||
+    !["dourados", "maracaju"].includes(cidade)
+  ) {
+    return "Entrega disponível apenas para Dourados/MS e Maracaju/MS.";
+  }
   return null;
 }
+
+
+async function validarCepEntrega(
+  dados: DadosComprador
+): Promise<string | null> {
+  const cep = dados.zipCode.replace(/\D/g, "");
+
+  try {
+    const response = await fetch(
+      `https://viacep.com.br/ws/${cep}/json/`,
+      {
+        signal: AbortSignal.timeout(5000),
+        cache: "no-store",
+        headers: {
+          Accept: "application/json",
+        },
+      }
+    );
+
+    if (!response.ok) {
+      return "Não foi possível validar o CEP. Tente novamente.";
+    }
+
+    const resultado: unknown = await response.json();
+
+    if (
+      !resultado ||
+      typeof resultado !== "object" ||
+      Array.isArray(resultado)
+    ) {
+      return "Não foi possível validar o CEP. Tente novamente.";
+    }
+
+    const endereco = resultado as Record<string, unknown>;
+
+    if (endereco.erro === true) {
+      return "CEP não encontrado.";
+    }
+
+    if (
+      typeof endereco.cep !== "string" ||
+      typeof endereco.localidade !== "string" ||
+      typeof endereco.uf !== "string"
+    ) {
+      return "Não foi possível validar o CEP. Tente novamente.";
+    }
+
+    if (endereco.cep.replace(/\D/g, "") !== cep) {
+      return "Não foi possível confirmar o CEP informado.";
+    }
+
+    const normalizar = (valor: string) =>
+      valor
+        .trim()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .toLowerCase();
+
+    const cidadeCep = normalizar(endereco.localidade);
+    const cidadeComprador = normalizar(dados.city);
+    const ufCep = endereco.uf.trim().toUpperCase();
+    const ufComprador = dados.state.trim().toUpperCase();
+
+    if (
+      ufCep !== "MS" ||
+      !["dourados", "maracaju"].includes(cidadeCep)
+    ) {
+      return "Entrega disponível apenas para Dourados/MS e Maracaju/MS.";
+    }
+
+    if (cidadeComprador !== cidadeCep || ufComprador !== ufCep) {
+      return "A cidade ou o estado informado não corresponde ao CEP.";
+    }
+
+    return null;
+  } catch {
+    return "Não foi possível validar o CEP. Tente novamente.";
+  }
+}
+
 
 function validarCheckoutKey(valor: unknown): valor is string {
   return (
@@ -137,10 +295,40 @@ export async function POST(req: Request) {
       return erroJson("Não autenticado.", 401);
     }
 
+    const limite = await verificarRateLimitCheckout(req, userId);
+
+    if (!limite.allowed) {
+      return Response.json(
+        { error: "Muitas tentativas de checkout. Aguarde antes de tentar novamente." },
+        {
+          status: 429,
+          headers: {
+            "Retry-After": String(limite.retryAfterSeconds),
+          },
+        }
+      );
+    }
+
+    const contentLength = req.headers.get("content-length");
+
+    if (contentLength !== null) {
+      const tamanho = Number(contentLength);
+
+      if (!Number.isSafeInteger(tamanho) || tamanho < 0 || tamanho > 16 * 1024) {
+        return erroJson("Requisição muito grande ou inválida.", 413);
+      }
+    }
+
     let body: Record<string, unknown>;
 
     try {
-      const conteudo = await req.json();
+      const texto = await req.text();
+
+      if (new TextEncoder().encode(texto).length > 16 * 1024) {
+        return erroJson("Requisição muito grande.", 413);
+      }
+
+      const conteudo = JSON.parse(texto);
 
       if (!conteudo || typeof conteudo !== "object" || Array.isArray(conteudo)) {
         return erroJson("Dados do checkout inválidos.", 400);
@@ -167,7 +355,7 @@ export async function POST(req: Request) {
         (item) =>
           !item ||
           typeof item.id !== "string" ||
-          !item.id.trim() ||
+          !/^prod_[a-zA-Z0-9]{1,100}$/.test(item.id) ||
           !Number.isInteger(item.quantity) ||
           item.quantity <= 0 ||
           item.quantity > 100
@@ -188,6 +376,12 @@ export async function POST(req: Request) {
 
     if (erroComprador) {
       return erroJson(erroComprador, 400);
+    }
+
+    const erroCep = await validarCepEntrega(comprador);
+
+    if (erroCep) {
+      return erroJson(erroCep, 400);
     }
 
     const quantidades = new Map<string, number>();
@@ -213,9 +407,16 @@ export async function POST(req: Request) {
       return erroJson("Usuário não encontrado.", 404);
     }
 
+    if (user.deletionRequestedAt) {
+      return erroJson(
+        "Esta conta está em processo de exclusão e não pode iniciar novas compras.",
+        403
+      );
+    }
+
     const dadosPedido = {
       fullName: comprador.fullName.trim(),
-      cpf: comprador.cpf.replace(/\D/g, "") || null,
+      cpf: (comprador.cpf ?? "").replace(/\D/g, "") || null,
       email: comprador.email.trim().toLowerCase(),
       phone: comprador.phone.replace(/\D/g, ""),
       zipCode: comprador.zipCode.replace(/\D/g, ""),
@@ -245,6 +446,7 @@ export async function POST(req: Request) {
           const activePrices = prices.data.filter(
             (price) =>
               price.currency === "brl" &&
+              price.type === "one_time" &&
               price.unit_amount !== null
           );
 
@@ -263,19 +465,20 @@ export async function POST(req: Request) {
             throw new Error("Preço inválido para um produto.");
           }
 
-          return {
-            name: product.name,
-            description: product.description,
-            quantity,
-            price: price.unit_amount,
-            image: product.images[0] || null,
-          };
+        return {
+          stripeProductId: productId,
+          name: product.name,
+          description: product.description,
+          quantity,
+          unitPrice: price.unit_amount,
+          image: product.images[0] || null,
+        };
         }
       )
     );
 
     const subtotal = productData.reduce(
-      (total, item) => total + item.price * item.quantity,
+      (total, item) => total + item.unitPrice * item.quantity,
       0
     );
 
@@ -301,28 +504,31 @@ export async function POST(req: Request) {
       userId: user.id,
     },
     include: {
-      products: {
+      items: {
         select: {
+          stripeProductId: true,
           name: true,
           quantity: true,
-          price: true,
+          unitPrice: true,
         },
       },
     },
   });
 
     if (checkoutExistente) {
-      const produtosIguais =
-  checkoutExistente.products.length === productData.length &&
+const produtosIguais =
+  checkoutExistente.items.length === productData.length &&
   productData.every((novoProduto) => {
-    const produtoExistente = checkoutExistente.products.find(
-      (produto) => produto.name === novoProduto.name
+    const produtoExistente = checkoutExistente.items.find((produto) =>
+      produto.stripeProductId
+        ? produto.stripeProductId === novoProduto.stripeProductId
+        : produto.name === novoProduto.name
     );
 
     return (
       produtoExistente !== undefined &&
       produtoExistente.quantity === novoProduto.quantity &&
-      produtoExistente.price === novoProduto.price
+      produtoExistente.unitPrice === novoProduto.unitPrice
     );
   });
 
@@ -357,12 +563,12 @@ if (!produtosIguais) {
         );
 
       if (
-        (currentIntent.metadata.userId &&
-          currentIntent.metadata.userId !== userId) ||
+        currentIntent.metadata.userId !== userId ||
+        currentIntent.metadata.checkoutKey !== checkoutKey ||
         (currentIntent.metadata.orderId &&
           currentIntent.metadata.orderId !== checkoutExistente.id) ||
-        (currentIntent.metadata.checkoutKey &&
-          currentIntent.metadata.checkoutKey !== checkoutKey)
+        currentIntent.amount !== total ||
+        currentIntent.currency !== "brl"
       ) {
         return erroJson(
           "Não foi possível validar a tentativa de pagamento.",
@@ -370,9 +576,12 @@ if (!produtosIguais) {
         );
       }
 
-      if (currentIntent.status !== "requires_payment_method") {
+      if (
+        !["pending", "failed"].includes(checkoutExistente.status) ||
+        currentIntent.status !== "requires_payment_method"
+      ) {
         return erroJson(
-          "O pagamento anterior ainda está em processamento ou já foi concluído.",
+          "O pagamento anterior não pode ser reutilizado. Consulte o pedido antes de iniciar outra tentativa.",
           409
         );
       }
@@ -397,23 +606,53 @@ if (!produtosIguais) {
         );
       }
 
-      const order = await prisma.order.update({
-        where: {
-          id: checkoutExistente.id,
-        },
-        data: {
-          ...dadosPedido,
-          ...dadosFinanceiros,
-          currency: "brl",
-          status: "pending",
-          products: {
-            deleteMany: {},
-            create: productData,
+      const order = await prisma.$transaction(async (tx) => {
+        const atualizacao = await tx.order.updateMany({
+          where: {
+            id: checkoutExistente.id,
+            status: {
+              in: ["pending", "failed"],
+            },
           },
-        },
+          data: {
+            ...dadosPedido,
+            ...dadosFinanceiros,
+            currency: "brl",
+            status: "pending",
+          },
+        });
+
+        if (atualizacao.count === 0) {
+          return null;
+        }
+
+        return tx.order.update({
+          where: {
+            id: checkoutExistente.id,
+          },
+          data: {
+            items: {
+              deleteMany: {},
+              create: productData,
+            },
+          },
+        });
       });
 
-      return respostaPagamento(updatedIntent, order.id);
+      if (!order) {
+        return erroJson(
+          "Esta tentativa de compra foi finalizada ou precisa de verificação. Atualize a página e consulte o pedido.",
+          409
+        );
+      }
+
+      const trackingToken = await obterTokenAcompanhamento(order.id);
+
+      return respostaPagamento(
+        updatedIntent,
+        order.id,
+        trackingToken
+      );
     }
 
     const paymentIntent = await stripe.paymentIntents.create(
@@ -454,7 +693,7 @@ if (!produtosIguais) {
           status: "pending",
           checkoutKey,
           paymentIntentID: paymentIntent.id,
-          products: {
+          items: {
             create: productData,
           },
         },
@@ -475,11 +714,12 @@ if (!produtosIguais) {
         userId: user.id,
       },
       include: {
-        products: {
+        items: {
           select: {
+            stripeProductId: true,
             name: true,
             quantity: true,
-            price: true,
+            unitPrice: true,
           },
         },
       },
@@ -496,17 +736,19 @@ if (!produtosIguais) {
         );
       }
 
-      const produtosIguais =
-      pedidoExistente.products.length === productData.length &&
+    const produtosIguais =
+      pedidoExistente.items.length === productData.length &&
       productData.every((novoProduto) => {
-        const produtoExistente = pedidoExistente.products.find(
-          (produto) => produto.name === novoProduto.name
+        const produtoExistente = pedidoExistente.items.find((produto) =>
+          produto.stripeProductId
+            ? produto.stripeProductId === novoProduto.stripeProductId
+            : produto.name === novoProduto.name
         );
 
         return (
           produtoExistente !== undefined &&
           produtoExistente.quantity === novoProduto.quantity &&
-          produtoExistente.price === novoProduto.price
+          produtoExistente.unitPrice === novoProduto.unitPrice
         );
       });
 
@@ -528,7 +770,10 @@ if (!produtosIguais) {
         intentExistente.metadata.checkoutKey === checkoutKey &&
         (!intentExistente.metadata.orderId ||
           intentExistente.metadata.orderId === pedidoExistente.id) &&
-        intentExistente.amount === Math.round(pedidoExistente.amount * 100) &&
+        pedidoExistente.subtotal === subtotal / 100 &&
+        pedidoExistente.shippingCost === FRETE_CENTAVOS / 100 &&
+        pedidoExistente.amount === total / 100 &&
+        intentExistente.amount === total &&
         intentExistente.currency === "brl" &&
         intentExistente.status === "requires_payment_method" &&
         !!intentExistente.client_secret;
@@ -540,9 +785,33 @@ if (!produtosIguais) {
         );
       }
 
-      return respostaPagamento(
-        intentExistente,
+      const intentRecuperado =
+        await stripe.paymentIntents.update(
+          intentExistente.id,
+          {
+            metadata: {
+              userId,
+              checkoutKey,
+              orderId: pedidoExistente.id,
+            },
+          }
+        );
+
+      if (!intentRecuperado.client_secret) {
+        return erroJson(
+          "Não foi possível recuperar o pagamento.",
+          500
+        );
+      }
+
+      const trackingToken = await obterTokenAcompanhamento(
         pedidoExistente.id
+      );
+
+      return respostaPagamento(
+        intentRecuperado,
+        pedidoExistente.id,
+        trackingToken
       );
     }
 
@@ -565,7 +834,13 @@ if (!produtosIguais) {
       );
     }
 
-    return respostaPagamento(intentAtualizado, order.id);
+    const trackingToken = await obterTokenAcompanhamento(order.id);
+
+    return respostaPagamento(
+      intentAtualizado,
+      order.id,
+      trackingToken
+    );
   } catch (error) {
     console.error("Erro no checkout:", error);
 

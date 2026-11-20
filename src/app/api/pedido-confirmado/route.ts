@@ -3,14 +3,28 @@ import { auth } from "@clerk/nextjs/server";
 import prisma from "@/src/lib/prisma";
 import { stripe } from "@/src/lib/stripe";
 
+function respostaJson(
+  dados: unknown,
+  opcoes: { status?: number } = {}
+) {
+  return Response.json(dados, {
+    ...opcoes,
+    headers: {
+      "Cache-Control": "no-store, private",
+      "Referrer-Policy": "no-referrer",
+      "X-Content-Type-Options": "nosniff",
+    },
+  });
+}
+
 export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
     const paymentIntentId = searchParams.get("payment_intent_id");
 
     if (!paymentIntentId) {
-      return Response.json(
-        { error: "Identificação do pagamento ausente." },
+      return respostaJson(
+        { error: "IdentificaÃ§Ã£o do pagamento ausente." },
         { status: 400 }
       );
     }
@@ -18,8 +32,8 @@ export async function GET(req: Request) {
     const { userId } = await auth();
 
     if (!userId) {
-      return Response.json(
-        { error: "Não autenticado." },
+      return respostaJson(
+        { error: "NÃ£o autenticado." },
         { status: 401 }
       );
     }
@@ -29,8 +43,8 @@ export async function GET(req: Request) {
     });
 
     if (!user) {
-      return Response.json(
-        { error: "Usuário não encontrado." },
+      return respostaJson(
+        { error: "UsuÃ¡rio nÃ£o encontrado." },
         { status: 404 }
       );
     }
@@ -41,20 +55,20 @@ export async function GET(req: Request) {
         userId: user.id,
       },
       include: {
-        products: {
+        items: {
           select: {
             id: true,
             name: true,
             quantity: true,
-            price: true,
+            unitPrice: true,
           },
         },
       },
     });
 
     if (!order) {
-      return Response.json(
-        { error: "Pedido não encontrado." },
+      return respostaJson(
+        { error: "Pedido nÃ£o encontrado." },
         { status: 404 }
       );
     }
@@ -62,43 +76,23 @@ export async function GET(req: Request) {
     const paymentIntent =
       await stripe.paymentIntents.retrieve(paymentIntentId);
 
-    // Confere se os metadados da Stripe correspondem ao pedido.
+// Confere se todos os metadados da Stripe correspondem ao pedido.
     if (
-      paymentIntent.metadata.orderId &&
-      paymentIntent.metadata.orderId !== order.id
-    ) {
-      console.error(
-        "Pedido divergente nos metadados do pagamento:",
-        order.id
-      );
-
-      return Response.json(
-        { error: "Não foi possível validar o pagamento." },
-        { status: 409 }
-      );
-    }
-
-    if (
-      paymentIntent.metadata.userId &&
-      paymentIntent.metadata.userId !== userId
-    ) {
-      return Response.json(
-        { error: "Não foi possível validar o pagamento." },
-        { status: 403 }
-      );
-    }
-
-    if (
-      paymentIntent.metadata.checkoutKey &&
+      !paymentIntent.metadata.orderId ||
+      paymentIntent.metadata.orderId !== order.id ||
+      !paymentIntent.metadata.userId ||
+      paymentIntent.metadata.userId !== userId ||
+      !paymentIntent.metadata.checkoutKey ||
+      !order.checkoutKey ||
       paymentIntent.metadata.checkoutKey !== order.checkoutKey
     ) {
       console.error(
-        "Chave de checkout divergente:",
+        "Metadados do PaymentIntent ausentes ou divergentes:",
         order.id
       );
 
-      return Response.json(
-        { error: "Não foi possível validar o pagamento." },
+      return respostaJson(
+        { error: "NÃ£o foi possÃ­vel validar o pagamento." },
         { status: 409 }
       );
     }
@@ -114,7 +108,7 @@ export async function GET(req: Request) {
       paymentIntent.amount_received === valorEsperado;
 
     if (paymentIntent.status === "succeeded" && !pagamentoValido) {
-      console.error("Divergência financeira na confirmação:", {
+      console.error("DivergÃªncia financeira na confirmaÃ§Ã£o:", {
         orderId: order.id,
         valorEsperado,
         valorStripe: paymentIntent.amount,
@@ -123,30 +117,57 @@ export async function GET(req: Request) {
         moedaStripe: paymentIntent.currency,
       });
 
-      return Response.json(
-        { error: "O pagamento precisa de verificação." },
+      return respostaJson(
+        { error: "O pagamento precisa de verificaÃ§Ã£o." },
         { status: 409 }
       );
     }
 
     let statusPedido = order.status;
 
-    // Só atualiza para pago depois de validar todos os dados.
-    if (pagamentoValido && order.status !== "paid") {
-      await prisma.order.updateMany({
+    // SÃ³ aprova pedidos pendentes ou com tentativa anterior falha.
+    if (pagamentoValido) {
+      const pagamentoAtualizado = await prisma.order.updateMany({
         where: {
           id: order.id,
-          status: { not: "paid" },
+          status: {
+            in: ["pending", "failed"],
+          },
         },
         data: {
           status: "paid",
         },
       });
 
-      statusPedido = "paid";
+      if (pagamentoAtualizado.count > 0) {
+        statusPedido = "paid";
+      } else {
+        const pedidoAtualizado = await prisma.order.findUnique({
+          where: { id: order.id },
+          select: { status: true },
+        });
+
+        if (!pedidoAtualizado) {
+          throw new Error("Pedido nÃ£o encontrado apÃ³s validar o pagamento.");
+        }
+
+        statusPedido = pedidoAtualizado.status;
+
+        if (
+          statusPedido === "canceled" ||
+          statusPedido === "review_required"
+        ) {
+          console.error(
+            "Pagamento confirmado exige revisÃ£o manual:",
+            order.id,
+            "Status atual:",
+            statusPedido
+          );
+        }
+      }
     }
 
-    return Response.json({
+    return respostaJson({
       order: {
         id: order.id,
         status: statusPedido,
@@ -154,7 +175,12 @@ export async function GET(req: Request) {
         shippingCost: order.shippingCost,
         amount: order.amount,
         currency: order.currency,
-        products: order.products,
+        products: order.items.map((item) => ({
+        id: item.id,
+        name: item.name,
+        quantity: item.quantity,
+        price: item.unitPrice,
+      })),
       },
       paymentStatus: paymentIntent.status,
     });
@@ -170,8 +196,8 @@ export async function GET(req: Request) {
 
     console.error("Erro ao consultar pedido:", error);
 
-    return Response.json(
-      { error: "Não foi possível consultar o pedido." },
+    return respostaJson(
+      { error: "NÃ£o foi possÃ­vel consultar o pedido." },
       { status: 500 }
     );
   }

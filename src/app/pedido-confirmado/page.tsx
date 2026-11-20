@@ -37,6 +37,7 @@ export default function PedidoConfirmado() {
   const [pedido, setPedido] = useState<Pedido | null>(null);
   const [status, setStatus] = useState("Verificando pagamento...");
   const [carregando, setCarregando] = useState(true);
+  const [trackingToken, setTrackingToken] = useState("");
 
   useEffect(() => {
     let cancelado = false;
@@ -46,6 +47,15 @@ export default function PedidoConfirmado() {
     async function verificarPagamento(tentativa = 0) {
       const params = new URLSearchParams(window.location.search);
       const paymentIntentId = params.get("payment_intent_id");
+
+      const token =
+      params.get("token") ||
+      sessionStorage.getItem("agape_tracking_token") ||
+      "";
+
+    if (token) {
+      setTrackingToken(token);
+    }
 
       if (!paymentIntentId) {
         setStatus("Não foi possível localizar o pagamento.");
@@ -218,12 +228,23 @@ export default function PedidoConfirmado() {
           </div>
         )}
 
+
+        {aprovado && trackingToken && (
+          <a
+            href={`/acompanhar-pedido?token=${encodeURIComponent(trackingToken)}`}
+            className="mt-8 block w-full rounded-lg bg-black px-6 py-4 text-center text-sm font-bold uppercase tracking-wider text-white transition hover:bg-gray-800"
+          >
+            Acompanhar meu pedido
+          </a>
+        )}
+
         <a
           href="/"
-          className="mt-8 block w-full rounded-lg bg-black px-6 py-4 text-center text-sm font-bold uppercase tracking-wider text-white transition hover:bg-gray-800"
+          className="mt-3 block w-full rounded-lg border border-gray-300 px-6 py-4 text-center text-sm font-bold uppercase tracking-wider text-black transition hover:bg-gray-100"
         >
           Voltar à loja
         </a>
+
       </div>
     </main>
   );

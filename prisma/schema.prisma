@@ -15,14 +15,17 @@ model User {
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
   stripeCustomerId String?
+  deletionRequestedAt DateTime?
 
   orders Order[]
 }
 
 model Order {
   id     String @id @default(cuid())
-  user   User   @relation(fields: [userId], references: [id])
-  userId Int
+  user   User?  @relation(fields: [userId], references: [id], onDelete: SetNull)
+  userId Int?
+
+  items OrderItem[]
 
   // Valores financeiros
   subtotal     Float @default(0)
@@ -50,19 +53,25 @@ model Order {
   createdDate     DateTime @default(now())
   paymentIntentID String?  @unique
 
-  products Product[]
-
   checkoutKey String? @unique
+
+  trackingTokenHash      String?   @unique
+  trackingTokenCreatedAt DateTime?
 }
 
-model Product {
-  id          String  @id @default(cuid())
-  name        String
-  description String?
-  price       Float
-  image       String?
-  quantity    Float   @default(0)
-  orders      Order[]
+model OrderItem {
+  id             String  @id @default(cuid())
+  orderId        String
+  stripeProductId String?
+  name           String
+  description    String?
+  quantity       Int
+  unitPrice      Int
+  image          String?
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId])
 }
 
 model StripeEvent {
@@ -70,4 +79,11 @@ model StripeEvent {
   stripeEventId String   @unique
   type          String
   processedAt   DateTime @default(now())
+}
+model CheckoutRateLimit {
+  key             String   @id
+  count           Int      @default(0)
+  windowStartedAt DateTime @default(now())
+
+  @@index([windowStartedAt])
 }
