@@ -3,9 +3,6 @@ import { NextRequest, NextResponse } from "next/server";
 import crypto from "node:crypto";
 import prisma from "../../../../lib/prisma";
 
-export const runtime = "nodejs";
-export const dynamic = "force-dynamic";
-
 function autorizado(request: NextRequest) {
   const secret = process.env.WHATSAPP_SERVICE_SECRET;
 

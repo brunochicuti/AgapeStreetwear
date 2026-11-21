@@ -3,9 +3,6 @@ import { NextRequest, NextResponse } from "next/server";
 import crypto from "node:crypto";
 import prisma from "../../../../lib/prisma";
 
-export const runtime = "nodejs";
-export const dynamic = "force-dynamic";
-
 const TIPOS_PERMITIDOS = new Set([
   "pre-key",
   "session",
