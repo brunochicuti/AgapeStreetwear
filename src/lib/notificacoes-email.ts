@@ -53,7 +53,14 @@ function montarEmail(
     assunto: mensagem.assunto,
     html: `
       <div style="font-family: Arial, sans-serif; color: #222; max-width: 600px; margin: auto; padding: 30px 20px;">
-        <h1 style="color: #b91c1c; font-size: 24px;">Agape Streetwear</h1>
+        <div style="text-align: center; margin-bottom: 25px;">
+        <img
+            src="https://agapestreetwear.com.br/logo_agape.png"
+            alt="Agape Streetwear"
+            width="180"
+            style="display: inline-block; max-width: 100%; height: auto;"
+        />
+        </div>
 
         <h2>${mensagem.titulo}</h2>
 
