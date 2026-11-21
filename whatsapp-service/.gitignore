@@ -1,0 +1,8 @@
+node_modules/
+.env
+auth_info_baileys/
+logs/
+
+# Banco local de notificações
+*.db
+*.db-*

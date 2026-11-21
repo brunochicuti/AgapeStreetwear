@@ -1,4 +1,3 @@
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -9,12 +8,12 @@ datasource db {
 }
 
 model User {
-  id               Int      @id @default(autoincrement())
-  externalId       String   @unique
-  attributes       Json
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
-  stripeCustomerId String?
+  id                  Int       @id @default(autoincrement())
+  externalId          String    @unique
+  attributes          Json
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+  stripeCustomerId    String?
   deletionRequestedAt DateTime?
 
   orders Order[]
@@ -28,8 +27,8 @@ model Order {
   items OrderItem[]
 
   // Valores financeiros
-  subtotal     Float @default(0)
-  shippingCost Float @default(5)
+  subtotal     Float  @default(0)
+  shippingCost Float  @default(5)
   amount       Float
   currency     String
   status       String
@@ -61,31 +60,33 @@ model Order {
   statusHistory OrderStatusHistory[]
 
   emailNotifications EmailNotification[]
+
+  whatsappNotifications WhatsAppNotification[]
 }
 
 model OrderStatusHistory {
-  id          String   @id @default(cuid())
-  orderId     String
-  order       Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  id      String @id @default(cuid())
+  orderId String
+  order   Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
 
-  fromStatus  String?
-  toStatus    String
-  source      String
-  changedBy   String?
-  createdAt   DateTime @default(now())
+  fromStatus String?
+  toStatus   String
+  source     String
+  changedBy  String?
+  createdAt  DateTime @default(now())
 
   @@index([orderId, createdAt])
 }
 
 model OrderItem {
-  id             String  @id @default(cuid())
-  orderId        String
+  id              String  @id @default(cuid())
+  orderId         String
   stripeProductId String?
-  name           String
-  description    String?
-  quantity       Int
-  unitPrice      Int
-  image          String?
+  name            String
+  description     String?
+  quantity        Int
+  unitPrice       Int
+  image           String?
 
   order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
 
@@ -98,6 +99,7 @@ model StripeEvent {
   type          String
   processedAt   DateTime @default(now())
 }
+
 model CheckoutRateLimit {
   key             String   @id
   count           Int      @default(0)
@@ -107,18 +109,50 @@ model CheckoutRateLimit {
 }
 
 model EmailNotification {
-  id          String   @id @default(cuid())
-  orderId     String
-  eventType   String
-  status      String   @default("pending")
-  attempts    Int      @default(0)
-  sentAt      DateTime?
-  lastError   String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id        String    @id @default(cuid())
+  orderId   String
+  eventType String
+  status    String    @default("pending")
+  attempts  Int       @default(0)
+  sentAt    DateTime?
+  lastError String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
 
   order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
 
   @@unique([orderId, eventType])
   @@index([status, createdAt])
+}
+
+model WhatsAppNotification {
+  id        String    @id @default(cuid())
+  orderId   String
+  eventType String
+  status    String    @default("pending")
+  attempts  Int       @default(0)
+  sentAt    DateTime?
+  lastError String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@unique([orderId, eventType])
+  @@index([status, createdAt])
+}
+
+model WhatsAppSession {
+  id             String   @id @default("baileys")
+  encryptedCreds String   @db.Text
+  updatedAt      DateTime @updatedAt
+}
+
+model WhatsAppSessionKey {
+  keyType      String
+  keyId        String
+  encryptedData String   @db.Text
+  updatedAt    DateTime @updatedAt
+
+  @@id([keyType, keyId])
 }

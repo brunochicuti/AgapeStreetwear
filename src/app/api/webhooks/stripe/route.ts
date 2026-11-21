@@ -259,6 +259,14 @@ export async function POST(request: Request) {
               },
               skipDuplicates: true,
             });
+            await tx.whatsAppNotification.createMany({
+              data: {
+                orderId: order.id,
+                eventType: "payment_approved",
+                status: "pending",
+              },
+              skipDuplicates: true,
+            });
             await tx.orderStatusHistory.create({
               data: {
                 orderId: order.id,
