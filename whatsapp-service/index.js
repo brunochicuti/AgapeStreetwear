@@ -49,11 +49,9 @@ let processandoFila = false;
 
 recuperarProcessamentosInterrompidos()
   .then((recuperadas) => {
-    if (recuperadas > 0) {
-      console.log(
-        `${recuperadas} processamento(s) interrompido(s) precisam de conferência.`
-      );
-    }
+    console.log(
+      `Recuperação da fila concluída. Registros recuperados: ${recuperadas}.`
+    );
   })
 .catch((erro) => {
   console.error(
