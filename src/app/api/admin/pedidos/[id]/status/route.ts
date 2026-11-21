@@ -3,6 +3,7 @@ import { auth } from "@clerk/nextjs/server";
 import { connection } from "next/server";
 import prisma from "@/src/lib/prisma";
 import { verificarAdmin } from "@/src/lib/admin";
+import { processarNotificacaoEmail } from "@/src/lib/notificacoes-email";
 
 const transicoesPermitidas: Record<string, string> = {
   paid: "preparing",
@@ -81,6 +82,18 @@ export async function PATCH(
         },
       });
 
+      if (novoStatus === "shipped" || novoStatus === "delivered") {
+        await tx.emailNotification.createMany({
+            data: {
+            orderId: id,
+            eventType:
+                novoStatus === "shipped" ? "order_shipped" : "order_delivered",
+            status: "pending",
+            },
+            skipDuplicates: true,
+        });
+        }
+
       return true;
     });
 
@@ -89,6 +102,12 @@ export async function PATCH(
         { error: "O pedido foi alterado por outra operação. Atualize a página." },
         { status: 409 }
       );
+    }
+
+    if (novoStatus === "shipped") {
+      await processarNotificacaoEmail(id, "order_shipped");
+    } else if (novoStatus === "delivered") {
+      await processarNotificacaoEmail(id, "order_delivered");
     }
 
     return Response.json({

@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import Stripe from "stripe";
 import prisma from "@/src/lib/prisma";
 import { stripe } from "@/src/lib/stripe";
+import { processarNotificacaoEmail } from "@/src/lib/notificacoes-email";
 
 export async function POST(request: Request) {
   const body = await request.text();
@@ -34,6 +35,7 @@ export async function POST(request: Request) {
   }
 
   try {
+    let pedidoParaNotificar: string | null = null;
     const resultado = await prisma.$transaction(async (tx) => {
       if (
         event.type !== "payment_intent.succeeded" &&
@@ -247,6 +249,16 @@ export async function POST(request: Request) {
             : { count: 0 };
 
           if (pagamentoAtualizado.count > 0) {
+            pedidoParaNotificar = order.id;
+
+            await tx.emailNotification.createMany({
+              data: {
+                orderId: order.id,
+                eventType: "payment_approved",
+                status: "pending",
+              },
+              skipDuplicates: true,
+            });
             await tx.orderStatusHistory.create({
               data: {
                 orderId: order.id,
@@ -371,6 +383,13 @@ export async function POST(request: Request) {
 
       return "ignored";
     });
+
+    if (pedidoParaNotificar) {
+    await processarNotificacaoEmail(
+      pedidoParaNotificar,
+      "payment_approved"
+    );
+  }
 
     if (resultado === "amount_mismatch") {
       return NextResponse.json({

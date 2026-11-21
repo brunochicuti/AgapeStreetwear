@@ -2,8 +2,9 @@
 import { auth } from "@clerk/nextjs/server";
 import prisma from "@/src/lib/prisma";
 import { stripe } from "@/src/lib/stripe";
-import { createHash, createHmac } from "node:crypto";
+import { obterTokenAcompanhamento } from "@/src/lib/tracking";
 import { verificarRateLimitCheckout } from "@/src/lib/rate-limit";
+import { registrarNotificacaoEmail } from "@/src/lib/notificacoes-email";
 
 const FRETE_CENTAVOS = 500;
 
@@ -28,50 +29,6 @@ type DadosComprador = {
 
 function erroJson(error: string, status: number) {
   return Response.json({ error }, { status });
-}
-
-function gerarDadosTokenAcompanhamento(orderId: string) {
-  const secret = process.env.TRACKING_TOKEN_SECRET;
-
-  if (!secret || Buffer.byteLength(secret) < 32) {
-    throw new Error("Chave de acompanhamento ausente ou inválida.");
-  }
-
-  const token = createHmac("sha256", secret)
-    .update(`agape-order-tracking:${orderId}`)
-    .digest("base64url");
-
-  const tokenHash = createHash("sha256")
-    .update(token)
-    .digest("hex");
-
-  return { token, tokenHash };
-}
-
-async function obterTokenAcompanhamento(orderId: string) {
-  const { token, tokenHash } = gerarDadosTokenAcompanhamento(orderId);
-
-  await prisma.order.updateMany({
-    where: {
-      id: orderId,
-      trackingTokenHash: null,
-    },
-    data: {
-      trackingTokenHash: tokenHash,
-      trackingTokenCreatedAt: new Date(),
-    },
-  });
-
-  const pedido = await prisma.order.findUnique({
-    where: { id: orderId },
-    select: { trackingTokenHash: true },
-  });
-
-  if (!pedido || pedido.trackingTokenHash !== tokenHash) {
-    throw new Error("Não foi possível validar o token de acompanhamento.");
-  }
-
-  return token;
 }
 
 function respostaPagamento(
@@ -665,13 +622,14 @@ if (!produtosIguais) {
         );
       }
 
-      const trackingToken = await obterTokenAcompanhamento(order.id);
 
-      return respostaPagamento(
-        updatedIntent,
-        order.id,
-        trackingToken
-      );
+    const trackingToken = await obterTokenAcompanhamento(order.id);
+
+    return respostaPagamento(
+      updatedIntent,
+      order.id,
+      trackingToken
+    );
     }
 
     const paymentIntent = await stripe.paymentIntents.create(

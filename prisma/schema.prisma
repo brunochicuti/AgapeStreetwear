@@ -59,6 +59,8 @@ model Order {
   trackingTokenCreatedAt DateTime?
 
   statusHistory OrderStatusHistory[]
+
+  emailNotifications EmailNotification[]
 }
 
 model OrderStatusHistory {
@@ -102,4 +104,21 @@ model CheckoutRateLimit {
   windowStartedAt DateTime @default(now())
 
   @@index([windowStartedAt])
+}
+
+model EmailNotification {
+  id          String   @id @default(cuid())
+  orderId     String
+  eventType   String
+  status      String   @default("pending")
+  attempts    Int      @default(0)
+  sentAt      DateTime?
+  lastError   String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@unique([orderId, eventType])
+  @@index([status, createdAt])
 }
