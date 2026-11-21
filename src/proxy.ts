@@ -10,6 +10,8 @@ const isPublicRoute = createRouteMatcher([
   "/privacidade(.*)",
   "/cookies(.*)",
   "/api/webhooks(.*)",
+  "/api/internal/whatsapp-notification(.*)",
+  "/api/internal/whatsapp-session(.*)",
 ]);
 
 const isAdminRoute = createRouteMatcher([
