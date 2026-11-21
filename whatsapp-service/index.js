@@ -55,9 +55,12 @@ recuperarProcessamentosInterrompidos()
       );
     }
   })
-  .catch(() => {
-    console.error("Não foi possível recuperar os processamentos interrompidos.");
-  });
+.catch((erro) => {
+  console.error(
+    "Falha ao recuperar processamentos interrompidos:",
+    erro.message
+  );
+});
 
 function autenticar(req, res, next) {
   const recebido = Buffer.from(req.headers.authorization || "");
