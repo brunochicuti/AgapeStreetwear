@@ -2,12 +2,14 @@
 import "dotenv/config";
 import express from "express";
 import crypto from "node:crypto";
+import { fileURLToPath } from "node:url";
 import makeWASocket, {
   DisconnectReason,
 } from "@whiskeysockets/baileys";
 
 import { criarEstadoAutenticacao } from "./auth-state.js";
 import qrcode from "qrcode-terminal";
+import QRCode from "qrcode";
 import pino from "pino";
 
 import {
@@ -25,8 +27,18 @@ const app = express();
 
 app.use(express.json({ limit: "10kb" }));
 
+app.get("/", (_req, res) => {
+  res.sendFile(fileURLToPath(new URL("./qr.html", import.meta.url)));
+});
+
 const PORT = Number(process.env.PORT) || 3001;
 const API_SECRET = process.env.API_SECRET;
+
+const QR_VIEW_SECRET = process.env.QR_VIEW_SECRET;
+
+if (!QR_VIEW_SECRET || QR_VIEW_SECRET.length < 40) {
+  throw new Error("QR_VIEW_SECRET ausente ou inválido.");
+}
 
 if (!API_SECRET || API_SECRET.length < 40) {
   throw new Error("API_SECRET ausente ou inválido.");
@@ -41,6 +53,7 @@ if (!/^55\d{10,11}$/.test(STORE_NUMBER)) {
 const STORE_JID = `${STORE_NUMBER}@s.whatsapp.net`;
 
 let socket;
+let qrCodeDataUrl = null;
 let statusWhatsApp = "disconnected";
 let connecting = false;
 let reconnectTimer;
@@ -74,6 +87,22 @@ function autenticar(req, res, next) {
   next();
 }
 
+function autenticarQr(req, res, next) {
+  const recebido = Buffer.from(req.headers.authorization || "");
+  const esperado = Buffer.from(`Bearer ${QR_VIEW_SECRET}`);
+
+  if (
+    recebido.length !== esperado.length ||
+    !crypto.timingSafeEqual(recebido, esperado)
+  ) {
+    return res.status(401).json({
+      error: "Acesso não autorizado.",
+    });
+  }
+
+  next();
+}
+
 async function conectarWhatsApp() {
   if (connecting || statusWhatsApp === "connected") return;
 
@@ -96,10 +125,16 @@ async function conectarWhatsApp() {
     socket.ev.on("connection.update", (update) => {
       const { connection, lastDisconnect, qr } = update;
 
-      if (qr) {
-        console.log("QR Code de conexão:");
-        qrcode.generate(qr, { small: true });
-      }
+        if (qr) {
+        QRCode.toDataURL(qr)
+            .then((imagem) => {
+            qrCodeDataUrl = imagem;
+            console.log("QR Code atualizado para vinculação.");
+            })
+            .catch(() => {
+            console.error("Falha ao gerar imagem do QR Code.");
+            });
+        }
 
       if (connection === "open") {
         statusWhatsApp = "connected";
@@ -204,6 +239,19 @@ app.get("/internal/health", autenticar, (_req, res) => {
     status: "online",
     authenticated: true,
     whatsapp: statusWhatsApp,
+  });
+});
+
+app.get("/internal/qr", autenticarQr, (_req, res) => {
+  if (!qrCodeDataUrl) {
+    return res.status(404).json({
+      error: "QR Code ainda não disponível.",
+    });
+  }
+
+  return res.json({
+    qrCode: qrCodeDataUrl,
+    status: statusWhatsApp,
   });
 });
 

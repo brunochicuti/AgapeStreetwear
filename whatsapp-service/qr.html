@@ -1,0 +1,105 @@
+
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Conectar WhatsApp — Agape Streetwear</title>
+  <style>
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      background: #111;
+      color: white;
+      font-family: Arial, sans-serif;
+    }
+
+    main {
+      width: min(90%, 380px);
+      padding: 28px;
+      text-align: center;
+      background: #202020;
+      border-radius: 16px;
+    }
+
+    img {
+      display: none;
+      width: 260px;
+      max-width: 100%;
+      margin: 20px auto;
+      background: white;
+      padding: 10px;
+      border-radius: 8px;
+    }
+
+    button {
+      padding: 12px 20px;
+      border: 0;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+
+    #mensagem {
+      color: #ccc;
+      line-height: 1.5;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h2>Agape Streetwear</h2>
+    <p>Conectar WhatsApp Business</p>
+
+    <input
+      id="chave"
+      type="password"
+      placeholder="Chave de visualização"
+      autocomplete="off"
+      style="width:90%;padding:12px;margin:10px 0"
+    >
+
+    <button id="consultar">Consultar QR Code</button>
+
+    <p id="mensagem">Informe sua chave para consultar o QR Code.</p>
+    <img id="qr" alt="QR Code de conexão do WhatsApp">
+
+    <p>Escaneie pelo WhatsApp Business em Aparelhos conectados.</p>
+  </main>
+
+  <script>
+    const botao = document.getElementById("consultar");
+    const imagem = document.getElementById("qr");
+    const mensagem = document.getElementById("mensagem");
+    const chave = document.getElementById("chave");
+
+    botao.addEventListener("click", async () => {
+      imagem.style.display = "none";
+      mensagem.textContent = "Consultando...";
+
+      try {
+        const resposta = await fetch("/internal/qr", {
+          headers: {
+            Authorization: `Bearer ${chave.value}`
+          },
+          cache: "no-store"
+        });
+
+        const dados = await resposta.json();
+
+        if (!resposta.ok) {
+          throw new Error(dados.error || "Não foi possível consultar.");
+        }
+
+        imagem.src = dados.qrCode;
+        imagem.style.display = "block";
+        mensagem.textContent = "QR Code disponível. Escaneie agora.";
+      } catch (erro) {
+        mensagem.textContent = erro.message;
+      }
+    });
+  </script>
+</body>
+</html>
