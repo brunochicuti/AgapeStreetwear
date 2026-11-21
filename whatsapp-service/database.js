@@ -23,7 +23,8 @@ async function requisicao(dados) {
 
   if (!response.ok) {
     throw new Error(
-      resultado.error || `Erro HTTP ${response.status} na API.`
+      resultado.error ||
+        `Erro HTTP ${response.status} na API. URL chamada: ${response.url}`
     );
   }
 
