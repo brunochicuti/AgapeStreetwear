@@ -264,6 +264,43 @@ app.get("/internal/qr", autenticarQr, (_req, res) => {
   });
 });
 
+app.post("/internal/test-message", autenticar, async (_req, res) => {
+  if (statusWhatsApp !== "connected" || !socket) {
+    return res.status(503).json({
+      status: "disconnected",
+      error: "WhatsApp desconectado.",
+    });
+  }
+
+  try {
+    const contatos = await socket.onWhatsApp(STORE_NUMBER);
+    const destinatario = contatos?.find((contato) => contato.exists);
+
+    if (!destinatario) {
+      return res.status(404).json({
+        status: "recipient_not_found",
+        error: "Número destinatário não encontrado no WhatsApp.",
+      });
+    }
+
+    const resultado = await socket.sendMessage(STORE_JID, {
+      text: "AGAPE STREETWEAR — Teste de conexão e envio de notificações realizado com sucesso.",
+    });
+
+    return res.json({
+      status: "sent",
+      messageId: resultado?.key?.id || null,
+    });
+  } catch (erro) {
+    console.error("Falha no teste de envio:", erro.message);
+
+    return res.status(502).json({
+      status: "error",
+      error: "Não foi possível concluir o teste de envio.",
+    });
+  }
+});
+
 app.post("/internal/send-order", autenticar, async (req, res) => {
   const { notificationId, orderId, customerName, items, amount } = req.body;
 
