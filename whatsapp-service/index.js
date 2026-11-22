@@ -34,6 +34,15 @@ app.get("/", (_req, res) => {
 const PORT = Number(process.env.PORT) || 3001;
 const API_SECRET = process.env.API_SECRET;
 
+console.log(
+  "[config] API_SECRET:",
+  "tamanho =", API_SECRET?.length,
+  "fingerprint =",
+  API_SECRET
+    ? crypto.createHash("sha256").update(API_SECRET).digest("hex").slice(0, 12)
+    : "ausente"
+);
+
 const QR_VIEW_SECRET = process.env.QR_VIEW_SECRET;
 
 if (!QR_VIEW_SECRET || QR_VIEW_SECRET.length < 40) {
