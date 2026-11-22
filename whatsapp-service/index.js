@@ -288,7 +288,7 @@ app.post("/internal/test-message", autenticar, async (_req, res) => {
       });
     }
 
-    const resultado = await socket.sendMessage(STORE_JID, {
+    const resultado = await socket.sendMessage(destinatario.jid, {
       text: "AGAPE STREETWEAR — Teste de conexão e envio de notificações realizado com sucesso.",
     });
 
