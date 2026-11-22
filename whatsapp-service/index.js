@@ -444,9 +444,16 @@ if (registro?.status === "sent") {
   let envioIniciado = false;
 
   try {
+    const contatos = await socket.onWhatsApp(STORE_NUMBER);
+    const destinatario = contatos?.find((contato) => contato.exists);
+
+    if (!destinatario?.jid) {
+      throw new Error("Destinatário não encontrado no WhatsApp.");
+    }
+
     envioIniciado = true;
 
-    const resultado = await socket.sendMessage(STORE_JID, {
+    const resultado = await socket.sendMessage(destinatario.jid, {
       text: mensagem,
     });
 
