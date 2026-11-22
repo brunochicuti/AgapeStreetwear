@@ -2,6 +2,8 @@
 import { auth } from "@clerk/nextjs/server";
 import prisma from "@/src/lib/prisma";
 import { stripe } from "@/src/lib/stripe";
+import { processarNotificacaoEmail } from "@/src/lib/notificacoes-email";
+import { registrarNotificacoesPedido } from "@/src/lib/registrar-notificacoes-pedido";
 
 function respostaJson(
   dados: unknown,
@@ -138,6 +140,10 @@ if (pagamentoValido) {
     }
 
     if (!["pending", "failed"].includes(pedidoAntes.status)) {
+      if (pedidoAntes.status === "paid") {
+        await registrarNotificacoesPedido(tx, order.id);
+      }
+
       return pedidoAntes.status;
     }
 
@@ -161,6 +167,8 @@ if (pagamentoValido) {
         },
       });
 
+      await registrarNotificacoesPedido(tx, order.id);
+
       return "paid";
     }
 
@@ -177,6 +185,13 @@ if (pagamentoValido) {
   }
 
   statusPedido = statusFinal;
+
+  if (statusPedido === "paid") {
+    await processarNotificacaoEmail(
+      order.id,
+      "payment_approved"
+    );
+  }
 
   if (
     statusPedido === "canceled" ||

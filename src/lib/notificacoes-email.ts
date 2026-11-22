@@ -107,12 +107,14 @@ export async function processarNotificacaoEmail(
 
     if (!notificacao) return;
 
+    notificacaoId = notificacao.id;
+
     const estadoAtual = await prisma.emailNotification.findUnique({
-    where: { id: notificacao.id },
-    select: {
+      where: { id: notificacao.id },
+      select: {
         status: true,
         attempts: true,
-    },
+      },
     });
 
     if (!estadoAtual || estadoAtual.attempts >= 5) return;

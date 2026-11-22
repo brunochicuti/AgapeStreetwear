@@ -4,6 +4,7 @@ import Stripe from "stripe";
 import prisma from "@/src/lib/prisma";
 import { stripe } from "@/src/lib/stripe";
 import { processarNotificacaoEmail } from "@/src/lib/notificacoes-email";
+import { registrarNotificacoesPedido } from "@/src/lib/registrar-notificacoes-pedido";
 
 export async function POST(request: Request) {
   const body = await request.text();
@@ -251,22 +252,8 @@ export async function POST(request: Request) {
           if (pagamentoAtualizado.count > 0) {
             pedidoParaNotificar = order.id;
 
-            await tx.emailNotification.createMany({
-              data: {
-                orderId: order.id,
-                eventType: "payment_approved",
-                status: "pending",
-              },
-              skipDuplicates: true,
-            });
-            await tx.whatsAppNotification.createMany({
-              data: {
-                orderId: order.id,
-                eventType: "payment_approved",
-                status: "pending",
-              },
-              skipDuplicates: true,
-            });
+            await registrarNotificacoesPedido(tx, order.id);
+
             await tx.orderStatusHistory.create({
               data: {
                 orderId: order.id,
