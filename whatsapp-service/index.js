@@ -276,6 +276,11 @@ app.post("/internal/test-message", autenticar, async (_req, res) => {
     const contatos = await socket.onWhatsApp(STORE_NUMBER);
     const destinatario = contatos?.find((contato) => contato.exists);
 
+    console.log("[diagnóstico] Destinatário:", {
+    existe: destinatario?.exists,
+    jid: destinatario?.jid,
+  });
+
     if (!destinatario) {
       return res.status(404).json({
         status: "recipient_not_found",
