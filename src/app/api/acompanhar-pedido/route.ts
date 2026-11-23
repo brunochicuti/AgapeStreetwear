@@ -64,6 +64,16 @@ export async function GET(request: Request) {
             image: true,
           },
         },
+          statusHistory: {
+          orderBy: {
+            createdAt: "asc",
+          },
+          select: {
+            fromStatus: true,
+            toStatus: true,
+            createdAt: true,
+          },
+        },
       },
     });
 
@@ -94,6 +104,7 @@ export async function GET(request: Request) {
             price: item.unitPrice,
             image: item.image,
           })),
+            statusHistory: pedido.statusHistory,
         },
       },
       {
