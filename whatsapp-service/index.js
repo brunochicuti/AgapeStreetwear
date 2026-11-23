@@ -521,6 +521,8 @@ app.post("/internal/connect", autenticar, async (_req, res) => {
 const server = app.listen(PORT, "0.0.0.0", () => {
   console.log(`Serviço iniciado na porta ${PORT}`);
 
+  conectarWhatsApp();
+
   processarFila().catch(() => {});
 
   filaTimer = setInterval(() => {
