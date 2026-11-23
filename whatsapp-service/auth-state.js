@@ -122,3 +122,9 @@ async function salvarCredenciais(atualizacao = {}) {
     saveCreds: salvarCredenciais,
   };
 }
+
+export async function limparEstadoAutenticacao() {
+  await requisicao("", {
+    method: "DELETE",
+  });
+}

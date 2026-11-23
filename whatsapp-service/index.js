@@ -7,7 +7,10 @@ import makeWASocket, {
   DisconnectReason,
 } from "@whiskeysockets/baileys";
 
-import { criarEstadoAutenticacao } from "./auth-state.js";
+import {
+  criarEstadoAutenticacao,
+  limparEstadoAutenticacao,
+} from "./auth-state.js";
 import qrcode from "qrcode-terminal";
 import QRCode from "qrcode";
 import pino from "pino";
@@ -71,6 +74,7 @@ let socketId = 0;
 let qrCodeDataUrl = null;
 let statusWhatsApp = "disconnected";
 let connecting = false;
+let desconectando = false;
 let reconnectTimer;
 let filaTimer;
 let processandoFila = false;
@@ -191,11 +195,8 @@ async function conectarWhatsApp() {
         socket = undefined;
         connecting = false;
 
-        if (codigo === DisconnectReason.loggedOut) {
+        if (desconectando || codigo === DisconnectReason.loggedOut) {
           statusWhatsApp = "logged_out";
-          console.log(
-            "Sessão desconectada. Nova autenticação necessária."
-          );
           return;
         }
 
@@ -557,6 +558,59 @@ app.post("/internal/connect", autenticar, async (_req, res) => {
   res.status(202).json({
     status: "connection_starting",
   });
+});
+
+app.post("/internal/logout", autenticar, async (_req, res) => {
+  if (desconectando) {
+    return res.status(409).json({
+      error: "Desconexão já em andamento.",
+    });
+  }
+
+  if (connecting && !socket) {
+    return res.status(409).json({
+      error: "Aguarde a conexão atual terminar.",
+    });
+  }
+
+  desconectando = true;
+  clearTimeout(reconnectTimer);
+
+  const socketAtual = socket;
+  socket = undefined;
+  connecting = false;
+  qrCodeDataUrl = null;
+
+  try {
+    if (socketAtual) {
+      try {
+        await socketAtual.logout();
+      } catch {
+        console.log("Socket encerrado durante a desconexão.");
+      }
+    }
+
+    await limparEstadoAutenticacao();
+
+    statusWhatsApp = "disconnected";
+    desconectando = false;
+
+    conectarWhatsApp().catch(() => {
+      statusWhatsApp = "error";
+      connecting = false;
+    });
+
+    return res.status(202).json({
+      status: "new_qr_starting",
+    });
+  } catch {
+    desconectando = false;
+    statusWhatsApp = "error";
+
+    return res.status(502).json({
+      error: "Não foi possível limpar a sessão do WhatsApp.",
+    });
+  }
 });
 
 const server = app.listen(PORT, "0.0.0.0", () => {
