@@ -41,6 +41,24 @@ type Pedido = {
   statusHistory: EventoStatus[];
 };
 
+
+type SolicitacaoPrivacidade = {
+  id: string;
+  userId: number | null;
+  type: string;
+  source: string;
+  status: string;
+  receivedAt: string;
+  completedAt: string | null;
+  decision: string | null;
+  justification: string | null;
+  processedBy: string | null;
+  user: {
+    deletionRequestedAt: string | null;
+  } | null;
+};
+
+
 const proximoStatus: Record<string, string> = {
   pending: "preparing",
   preparing: "ready",
@@ -77,6 +95,10 @@ export default function AdminPage() {
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState("");
   const [atualizando, setAtualizando] = useState<string | null>(null);
+  const [solicitacoes, setSolicitacoes] = useState<SolicitacaoPrivacidade[]>([]);
+  const [carregandoSolicitacoes, setCarregandoSolicitacoes] = useState(true);
+  const [atualizandoSolicitacao, setAtualizandoSolicitacao] = useState<string | null>(null);
+  const [erroPrivacidade, setErroPrivacidade] = useState("");
 
   const carregarPedidos = useCallback(async () => {
     try {
@@ -106,9 +128,42 @@ export default function AdminPage() {
     }
   }, []);
 
+    const carregarSolicitacoes = useCallback(async () => {
+    try {
+      setErroPrivacidade("");
+
+      const resposta = await fetch(
+        "/api/admin/solicitacoes-privacidade",
+        { cache: "no-store" }
+      );
+
+      const dados = await resposta.json();
+
+      if (!resposta.ok) {
+        throw new Error(
+          dados.error || "Não foi possível consultar as solicitações."
+        );
+      }
+
+      setSolicitacoes(dados.solicitacoes ?? []);
+    } catch (error) {
+      setErroPrivacidade(
+        error instanceof Error
+          ? error.message
+          : "Erro ao consultar solicitações."
+      );
+    } finally {
+      setCarregandoSolicitacoes(false);
+    }
+  }, []);
+
   useEffect(() => {
     carregarPedidos();
   }, [carregarPedidos]);
+
+  useEffect(() => {
+  carregarSolicitacoes();
+}, [carregarSolicitacoes]);
 
   async function atualizarStatus(pedido: Pedido) {
     const novoStatus = proximoStatus[pedido.fulfillmentStatus];
@@ -156,6 +211,72 @@ export default function AdminPage() {
     }
   }
 
+
+  async function atualizarSolicitacao(
+    solicitacao: SolicitacaoPrivacidade,
+    novoStatus: string
+  ) {
+    let decision = "";
+    let justification = "";
+
+    if (novoStatus !== "EM_ANALISE") {
+      const decisaoInformada = window.prompt(
+        "Registre a decisão tomada para esta solicitação:"
+      );
+
+      if (!decisaoInformada?.trim()) return;
+
+      const justificativaInformada = window.prompt(
+        "Explique a justificativa da decisão:"
+      );
+
+      if (!justificativaInformada?.trim()) return;
+
+      decision = decisaoInformada.trim();
+      justification = justificativaInformada.trim();
+    }
+
+    try {
+      setAtualizandoSolicitacao(solicitacao.id);
+      setErroPrivacidade("");
+
+      const resposta = await fetch(
+        "/api/admin/solicitacoes-privacidade",
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            id: solicitacao.id,
+            status: novoStatus,
+            decision,
+            justification,
+          }),
+        }
+      );
+
+      const dados = await resposta.json();
+
+      if (!resposta.ok) {
+        throw new Error(
+          dados.error || "Não foi possível atualizar a solicitação."
+        );
+      }
+
+      await carregarSolicitacoes();
+    } catch (error) {
+      setErroPrivacidade(
+        error instanceof Error
+          ? error.message
+          : "Erro ao atualizar a solicitação."
+      );
+    } finally {
+      setAtualizandoSolicitacao(null);
+    }
+  }
+
+
   return (
     <main className="min-h-screen bg-neutral-950 px-6 pt-32 pb-10 text-white">
       <div className="mx-auto max-w-6xl">
@@ -179,6 +300,133 @@ export default function AdminPage() {
             Atualizar pedidos
           </button>
         </header>
+
+
+        <section className="mb-10 rounded-xl border border-neutral-800 bg-neutral-900 p-6 sm:p-8">
+          <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <h2 className="text-lg font-black uppercase">
+                Solicitações de privacidade
+              </h2>
+              <p className="mt-2 text-sm text-neutral-400">
+                Acompanhe e analise solicitações de titulares de dados.
+              </p>
+            </div>
+
+            <button
+              onClick={carregarSolicitacoes}
+              className="rounded-lg border border-neutral-700 px-4 py-2 text-sm font-bold transition hover:bg-neutral-800"
+            >
+              Atualizar solicitações
+            </button>
+          </div>
+
+          {erroPrivacidade && (
+            <div className="mb-5 rounded-lg border border-red-900 bg-red-950 p-4 text-sm text-red-300">
+              {erroPrivacidade}
+            </div>
+          )}
+
+          {carregandoSolicitacoes ? (
+            <p className="py-8 text-center text-neutral-400">
+              Carregando solicitações...
+            </p>
+          ) : solicitacoes.length === 0 ? (
+            <p className="py-8 text-center text-neutral-500">
+              Nenhuma solicitação de privacidade registrada.
+            </p>
+          ) : (
+            <div className="space-y-4">
+              {solicitacoes.map((solicitacao) => (
+                <article
+                  key={solicitacao.id}
+                  className="rounded-lg border border-neutral-800 p-5"
+                >
+                  <div className="flex flex-wrap justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-bold">
+                        {solicitacao.type === "EXCLUSAO_CONTA"
+                          ? "Exclusão de conta"
+                          : solicitacao.type}
+                      </p>
+                      <p className="mt-1 text-xs text-neutral-500">
+                        Recebida em:{" "}
+                        {new Date(solicitacao.receivedAt).toLocaleString("pt-BR")}
+                      </p>
+                      <p className="mt-1 text-xs text-neutral-500">
+                        Origem: {solicitacao.source}
+                      </p>
+                      <p className="mt-1 text-xs text-neutral-500">
+                        Identificador interno: {solicitacao.userId ?? "Não vinculado"}
+                      </p>
+                    </div>
+
+                    <span className="h-fit rounded-full bg-neutral-800 px-3 py-2 text-xs font-bold">
+                      {solicitacao.status}
+                    </span>
+                  </div>
+
+                  {solicitacao.decision && (
+                    <div className="mt-4 border-t border-neutral-800 pt-4 text-sm">
+                      <p className="font-bold text-neutral-300">
+                        Decisão: {solicitacao.decision}
+                      </p>
+                      <p className="mt-2 text-neutral-400">
+                        Justificativa: {solicitacao.justification}
+                      </p>
+                      {solicitacao.completedAt && (
+                        <p className="mt-2 text-xs text-neutral-500">
+                          Processada em:{" "}
+                          {new Date(solicitacao.completedAt).toLocaleString("pt-BR")}
+                        </p>
+                      )}
+                    </div>
+                  )}
+
+                  <div className="mt-5 flex flex-wrap gap-3">
+                    {solicitacao.status === "PENDENTE" && (
+                      <button
+                        onClick={() =>
+                          atualizarSolicitacao(solicitacao, "EM_ANALISE")
+                        }
+                        disabled={atualizandoSolicitacao !== null}
+                        className="rounded-lg border border-neutral-600 px-4 py-3 text-xs font-bold transition hover:bg-neutral-800 disabled:opacity-50"
+                      >
+                        {atualizandoSolicitacao === solicitacao.id
+                          ? "Atualizando..."
+                          : "Iniciar análise"}
+                      </button>
+                    )}
+
+                    {solicitacao.status === "EM_ANALISE" && (
+                      <>
+                        {["CONCLUIDA", "PARCIAL", "INDEFERIDA"].map((status) => (
+                          <button
+                            key={status}
+                            onClick={() =>
+                              atualizarSolicitacao(solicitacao, status)
+                            }
+                            disabled={atualizandoSolicitacao !== null}
+                            className="rounded-lg border border-neutral-600 px-4 py-3 text-xs font-bold transition hover:bg-neutral-800 disabled:opacity-50"
+                          >
+                            {atualizandoSolicitacao === solicitacao.id
+                              ? "Atualizando..."
+                              : status === "CONCLUIDA"
+                                ? "Concluir"
+                                : status === "PARCIAL"
+                                  ? "Atender parcialmente"
+                                  : "Indeferir"}
+                          </button>
+                        ))}
+                      </>
+                    )}
+                  </div>
+                </article>
+              ))}
+            </div>
+          )}
+        </section>
+
 
         {erro && (
           <div className="mb-6 rounded-lg border border-red-900 bg-red-950 p-4 text-sm text-red-300">

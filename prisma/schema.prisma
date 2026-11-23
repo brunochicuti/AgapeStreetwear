@@ -17,6 +17,8 @@ model User {
   deletionRequestedAt DateTime?
 
   orders Order[]
+
+    privacyRequests PrivacyRequest[]
 }
 
 model Order {
@@ -157,4 +159,29 @@ model WhatsAppSessionKey {
   updatedAt    DateTime @updatedAt
 
   @@id([keyType, keyId])
+}
+
+model PrivacyRequest {
+  id        String @id @default(cuid())
+  userId    Int?
+  user      User?  @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  eventId   String? @unique
+
+  type      String
+  source    String
+  status    String   @default("PENDENTE")
+
+  receivedAt  DateTime @default(now())
+  completedAt DateTime?
+
+  decision      String?
+  justification String?
+  processedBy   String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status, receivedAt])
+  @@index([userId])
 }

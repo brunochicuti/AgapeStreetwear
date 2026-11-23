@@ -71,51 +71,68 @@ event = JSON.parse(rawBody) as ClerkWebhookEvent;
   }
 
   // Só precisamos processar eventos de criação e atualização.
-    // Processa a exclusão solicitada pelo cliente.
-    if (event.type === "user.deleted") {
+
+  // Processa a exclusão solicitada pelo cliente.
+  if (event.type === "user.deleted") {
     const deletedUserId = event.data?.id;
+    const eventId = svixHeaders["svix-id"];
 
     if (!deletedUserId) {
-        return NextResponse.json(
+      return NextResponse.json(
         { error: "Identificador do usuário ausente." },
         { status: 400 }
-        );
+      );
     }
 
     try {
-        const existingUser = await prisma.user.findUnique({
-        where: { externalId: deletedUserId },
+      await prisma.$transaction(async (tx) => {
+        const existingUser = await tx.user.findUnique({
+          where: { externalId: deletedUserId },
         });
 
         const deletionRequestedAt =
-        existingUser?.deletionRequestedAt ?? new Date();
+          existingUser?.deletionRequestedAt ?? new Date();
 
-        await prisma.user.upsert({
-        where: { externalId: deletedUserId },
-        create: {
+        const user = await tx.user.upsert({
+          where: { externalId: deletedUserId },
+          create: {
             externalId: deletedUserId,
             attributes: {},
             deletionRequestedAt,
-        },
-        update: {
+          },
+          update: {
             attributes: {},
             deletionRequestedAt,
-        },
+          },
         });
 
-        return NextResponse.json(
+        await tx.privacyRequest.createMany({
+          data: [
+            {
+              userId: user.id,
+              eventId,
+              type: "EXCLUSAO_CONTA",
+              source: "CLERK_WEBHOOK",
+            },
+          ],
+          skipDuplicates: true,
+        });
+      });
+
+      return NextResponse.json(
         { received: true, deletionRequested: true },
         { status: 200 }
-        );
+      );
     } catch (error) {
-        console.error("Erro ao registrar exclusão da conta:", error);
+      console.error("Erro ao registrar exclusão da conta:", error);
 
-        return NextResponse.json(
+      return NextResponse.json(
         { error: "Falha ao registrar exclusão." },
         { status: 500 }
-        );
+      );
     }
-    }
+  }
+
 
     // Os demais eventos não precisam ser processados.
     if (
