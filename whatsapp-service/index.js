@@ -97,6 +97,14 @@ function autenticar(req, res, next) {
   const recebido = Buffer.from(req.headers.authorization || "");
   const esperado = Buffer.from(`Bearer ${API_SECRET}`);
 
+  console.log(
+  "[Auth] Comparação:",
+  "recebido =", recebido.length,
+  crypto.createHash("sha256").update(recebido).digest("hex").slice(0, 12),
+  "| esperado =", esperado.length,
+  crypto.createHash("sha256").update(esperado).digest("hex").slice(0, 12)
+);
+
   if (
     recebido.length !== esperado.length ||
     !crypto.timingSafeEqual(recebido, esperado)
