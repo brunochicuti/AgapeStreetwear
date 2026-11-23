@@ -116,7 +116,7 @@ export function CookiePanel({
         <button
           type="button"
           onClick={openNotice}
-          className="fixed bottom-5 right-5 z-[90] flex items-center gap-2 rounded-full border border-white/15 bg-[#111111] px-4 py-3 text-xs font-semibold text-white shadow-xl transition hover:border-[#863D3D] hover:text-[#D59A9A]"
+          className="hidden md:flex fixed bottom-5 right-5 z-[90] items-center gap-2 rounded-full border border-white/15 bg-[#111111] px-4 py-3 text-xs font-semibold text-white shadow-xl transition hover:border-[#863D3D] hover:text-[#D59A9A]"
           aria-label="Consultar informações sobre cookies"
         >
           <Cookie className="size-4" />
