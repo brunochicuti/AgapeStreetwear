@@ -32,6 +32,11 @@ app.get("/", (_req, res) => {
 });
 
 const PORT = Number(process.env.PORT) || 3001;
+
+const INSTANCE_ID = `${process.pid}-${crypto.randomUUID().slice(0, 8)}`;
+
+console.log(`[Processo] Instância ${INSTANCE_ID} iniciada.`);
+
 const API_SECRET = process.env.API_SECRET;
 
 console.log(
@@ -121,7 +126,7 @@ async function conectarWhatsApp() {
   statusWhatsApp = "connecting";
 
   const tentativaId = ++socketId;
-  console.log(`[WhatsApp] Iniciando socket #${tentativaId}`);
+  console.log(`[WhatsApp][${INSTANCE_ID}] Iniciando socket #${tentativaId}`);
 
   let novoSocket;
 
@@ -167,7 +172,7 @@ async function conectarWhatsApp() {
         statusWhatsApp = "connected";
         connecting = false;
         console.log(
-          `[WhatsApp] Socket #${tentativaId} conectado (evento open).`
+          `[WhatsApp][${INSTANCE_ID}] Socket #${tentativaId} conectado (evento open).`
         );
         console.log("WhatsApp conectado.");
       }
@@ -176,7 +181,7 @@ async function conectarWhatsApp() {
         const codigo = lastDisconnect?.error?.output?.statusCode;
 
         console.log(
-          `[WhatsApp] Socket #${tentativaId} fechou. Código: ${
+          `[WhatsApp][${INSTANCE_ID}] Socket #${tentativaId} fechou. Código: ${
             codigo ?? "desconhecido"
           }. Motivo: ${
             lastDisconnect?.error?.message ?? "não informado"
