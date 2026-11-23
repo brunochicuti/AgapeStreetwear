@@ -113,6 +113,7 @@ function autenticarQr(req, res, next) {
   next();
 }
 
+
 async function conectarWhatsApp() {
   if (connecting || statusWhatsApp === "connected") return;
 
@@ -122,52 +123,74 @@ async function conectarWhatsApp() {
   const tentativaId = ++socketId;
   console.log(`[WhatsApp] Iniciando socket #${tentativaId}`);
 
-  try {
-        const { state, saveCreds } =
-            await criarEstadoAutenticacao();
+  let novoSocket;
 
-    socket = makeWASocket({
+  try {
+    const { state, saveCreds } = await criarEstadoAutenticacao();
+
+    novoSocket = makeWASocket({
       auth: state,
       logger: pino({ level: "silent" }),
       markOnlineOnConnect: false,
       syncFullHistory: false,
     });
 
-    socket.ev.on("creds.update", saveCreds);
+    socket = novoSocket;
 
-    socket.ev.on("connection.update", (update) => {
+    novoSocket.ev.on("creds.update", saveCreds);
+
+    novoSocket.ev.on("connection.update", (update) => {
+      // Ignora eventos de sockets antigos.
+      if (socket !== novoSocket) {
+        console.log(
+          `[WhatsApp] Evento ignorado do socket antigo #${tentativaId}.`
+        );
+        return;
+      }
+
       const { connection, lastDisconnect, qr } = update;
 
-        if (qr) {
+      if (qr) {
         QRCode.toDataURL(qr)
-            .then((imagem) => {
-            qrCodeDataUrl = imagem;
-            console.log("QR Code atualizado para vinculação.");
-            })
-            .catch(() => {
+          .then((imagem) => {
+            if (socket === novoSocket) {
+              qrCodeDataUrl = imagem;
+              console.log("QR Code atualizado para vinculação.");
+            }
+          })
+          .catch(() => {
             console.error("Falha ao gerar imagem do QR Code.");
-            });
-        }
+          });
+      }
 
       if (connection === "open") {
         statusWhatsApp = "connected";
         connecting = false;
-        console.log(`[WhatsApp] Socket #${tentativaId} conectado (evento open).`);
+        console.log(
+          `[WhatsApp] Socket #${tentativaId} conectado (evento open).`
+        );
+        console.log("WhatsApp conectado.");
       }
 
       if (connection === "close") {
-        connecting = false;
-        socket = undefined;
-
         const codigo = lastDisconnect?.error?.output?.statusCode;
 
         console.log(
-        `[WhatsApp] Socket #${tentativaId} fechou. Código: ${codigo ?? "desconhecido"}. Motivo: ${lastDisconnect?.error?.message ?? "não informado"}`
-      );
+          `[WhatsApp] Socket #${tentativaId} fechou. Código: ${
+            codigo ?? "desconhecido"
+          }. Motivo: ${
+            lastDisconnect?.error?.message ?? "não informado"
+          }`
+        );
+
+        socket = undefined;
+        connecting = false;
 
         if (codigo === DisconnectReason.loggedOut) {
           statusWhatsApp = "logged_out";
-          console.log("Sessão desconectada. Nova autenticação necessária.");
+          console.log(
+            "Sessão desconectada. Nova autenticação necessária."
+          );
           return;
         }
 
@@ -183,11 +206,16 @@ async function conectarWhatsApp() {
       }
     });
   } catch {
-    connecting = false;
-    statusWhatsApp = "error";
+    if (!novoSocket || socket === novoSocket) {
+      socket = undefined;
+      connecting = false;
+      statusWhatsApp = "error";
+    }
+
     console.error("Não foi possível iniciar a conexão WhatsApp.");
   }
 }
+
 
 app.get("/health", (_req, res) => {
   res.json({
