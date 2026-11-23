@@ -11,7 +11,7 @@
         </h1>
 
         <p className="text-sm text-gray-600">
-          Última atualização: 12 de novembro de 2026
+          Última atualização: 23 de novembro de 2026
         </p>
       </header>
 
@@ -43,7 +43,7 @@
             Brasil.
           </p>
           <p>
-            Contato: contato@agapestreetwear.com.br.
+            Contato: suporte@in.agapestreetwear.com.br.
           </p>
         </section>
 
@@ -83,9 +83,10 @@
             para orientar a solução, respeitando a legislação aplicável.
           </p>
           <p>
-            As camisetas são produzidas sob encomenda. O prazo estimado
-            de produção é de 2 a 3 dias úteis após a confirmação do pedido,
-            podendo variar conforme a demanda.
+            Todos os produtos são produzidos sob encomenda, não havendo
+            estoque disponível para pronta entrega. O prazo previsto é de
+            até 7 dias úteis após a confirmação do pagamento, incluindo
+            produção e entrega, nas regiões atendidas pela loja.
           </p>
         </section>
 
@@ -123,6 +124,11 @@
             no checkout.
           </p>
           <p>
+            O prazo previsto para entrega é de até 7 dias úteis após a
+            confirmação do pagamento, incluindo o período de produção
+            sob encomenda e o transporte até o endereço informado.
+          </p>
+          <p>
             O cliente deve conferir se os dados de endereço e contato
             estão corretos. Informações incorretas ou incompletas podem
             prejudicar a entrega.
@@ -141,7 +147,7 @@
           <p>
             As solicitações de troca, devolução, cancelamento ou atendimento
             relacionado a produtos com defeito poderão ser encaminhadas
-            pelo e-mail contato@agapestreetwear.com.br.
+            pelo e-mail suporte@in.agapestreetwear.com.br.
           </p>
           <p>
             Como política comercial, a loja aceita solicitações de troca
@@ -153,15 +159,16 @@
             sem uso, sem lavagem e com a etiqueta original preservada.
           </p>
           <p>
-            A devolução da camiseta original será combinada diretamente
+            A devolução do produto original será combinada diretamente
             com o cliente, podendo ocorrer por retirada no endereço
             informado ou em outro local previamente acordado entre as partes.
           </p>
           <p>
             Na troca voluntária por tamanho, poderá ser cobrada uma taxa
             de R$ 10,00 referente à nova entrega. Quando necessário,
-            uma nova camiseta será produzida no tamanho solicitado,
-            com prazo estimado de 2 a 3 dias úteis, sujeito à demanda.
+            um novo produto será produzido sob encomenda no tamanho
+            solicitado. O prazo para a nova produção e entrega será
+            informado ao cliente durante a solicitação da troca.
           </p>
           <p>
             A taxa e as condições da troca voluntária não se aplicam
@@ -267,7 +274,7 @@
           </p>
           <p>
             Para dúvidas, solicitações ou atendimento, entre em contato:
-            contato@agapestreetwear.com.br.
+            suporte@in.agapestreetwear.com.br.
           </p>
           <p>
             Responsável: Jonathan Leite Da Silva — Dourados, Mato Grosso

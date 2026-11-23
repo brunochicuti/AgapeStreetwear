@@ -847,9 +847,24 @@ useEffect(() => {
               </div>
             </div>
 
-            <p className="mt-6 text-xs leading-relaxed text-gray-400">
-              Entrega com frete fixo de R$ 5,00 por pedido.
-            </p>
+            <div className="mt-6 space-y-2 text-xs leading-relaxed text-gray-500">
+              <p>
+                <strong className="text-gray-700">Produção:</strong>{" "}
+                Todos os produtos são produzidos sob encomenda.
+              </p>
+              <p>
+                <strong className="text-gray-700">Prazo de entrega:</strong>{" "}
+                Até 7 dias úteis após a confirmação do pagamento, incluindo produção e entrega.
+              </p>
+              <p>
+                <strong className="text-gray-700">Frete:</strong>{" "}
+                R$ 5,00 por pedido.
+              </p>
+              <p>
+                <strong className="text-gray-700">Região de entrega:</strong>{" "}
+                Dourados/MS e Maracaju/MS.
+              </p>
+            </div>
           </aside>
         </div>
       </div>
