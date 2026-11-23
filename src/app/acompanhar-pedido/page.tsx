@@ -17,12 +17,14 @@ type Produto = {
 type EventoStatus = {
   fromStatus: string | null;
   toStatus: string;
+  source: string;
   createdAt: string;
 };
 
 type Pedido = {
   id: string;
   status: string;
+  fulfillmentStatus: string;
   subtotal: number;
   shippingCost: number;
   amount: number;
@@ -46,6 +48,19 @@ function obterStatusPagamento(status: string) {
     failed: "Pagamento não aprovado",
     canceled: "Pedido cancelado",
     review_required: "Pagamento em análise",
+    preparing: "Em preparação",
+    ready: "Pedido pronto",
+    shipped: "Pedido enviado",
+    delivered: "Pedido entregue",
+  };
+
+  return statusMap[status] ?? "Status não identificado";
+}
+
+function obterStatusEntrega(status: string) {
+  const statusMap: Record<string, string> = {
+    awaiting_payment: "Aguardando pagamento",
+    pending: "Aguardando preparação",
     preparing: "Em preparação",
     ready: "Pedido pronto",
     shipped: "Pedido enviado",
@@ -84,7 +99,10 @@ function HistoricoPedido({
 }: {
   historico: EventoStatus[];
 }) {
-  if (!historico?.length) {
+  const eventosEntrega = historico.filter(
+  (evento) => evento.source === "admin"
+);
+  if (!eventosEntrega.length) {
     return (
       <p className="text-sm text-gray-500">
         Nenhuma atualização disponível.
@@ -94,11 +112,11 @@ function HistoricoPedido({
 
   return (
     <div className="space-y-5">
-      {historico.map((evento, index) => (
+      {eventosEntrega.map((evento, index) => (
         <div key={`${evento.toStatus}-${evento.createdAt}-${index}`} className="flex gap-3">
           <div className="flex flex-col items-center">
             <span className="h-3 w-3 rounded-full bg-black" />
-            {index !== historico.length - 1 && (
+            {index !== eventosEntrega.length - 1 && (
               <span className="mt-1 min-h-8 w-px flex-1 bg-gray-300" />
             )}
           </div>
@@ -319,6 +337,16 @@ export default function AcompanharPedidoPage() {
             </section>
 
             <section className="border-b border-gray-200 py-6">
+              <h2 className="text-sm font-bold uppercase tracking-wider">
+                Situação da entrega
+              </h2>
+
+              <p className="mt-3 inline-flex rounded-full bg-gray-100 px-4 py-2 text-sm font-bold text-gray-700">
+                {obterStatusEntrega(pedido.fulfillmentStatus)}
+              </p>
+            </section>
+
+            <section className="border-b border-gray-200 py-6">
             <h2 className="mb-5 text-sm font-bold uppercase tracking-wider">
                 Histórico do pedido
             </h2>
@@ -359,9 +387,15 @@ export default function AcompanharPedidoPage() {
                     </p>
                   </div>
 
-                  <span className={`rounded-full px-4 py-2 text-xs font-bold ${corStatus(item.status)}`}>
-                    {obterStatusPagamento(item.status)}
-                  </span>
+                  <div className="flex flex-col items-start gap-2">
+                    <span className={`rounded-full px-4 py-2 text-xs font-bold ${corStatus(item.status)}`}>
+                      {obterStatusPagamento(item.status)}
+                    </span>
+
+                    <span className="rounded-full bg-gray-100 px-4 py-2 text-xs font-bold text-gray-700">
+                      {obterStatusEntrega(item.fulfillmentStatus)}
+                    </span>
+                  </div>
                 </div>
 
                 <section className="py-6">

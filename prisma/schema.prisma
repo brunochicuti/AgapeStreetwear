@@ -33,6 +33,8 @@ model Order {
   currency     String
   status       String
 
+  fulfillmentStatus String @default("awaiting_payment")
+
   // Dados do comprador
   fullName String?
   cpf      String?

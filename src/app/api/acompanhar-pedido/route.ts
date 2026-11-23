@@ -50,6 +50,7 @@ export async function GET(request: Request) {
       select: {
         id: true,
         status: true,
+        fulfillmentStatus: true,
         subtotal: true,
         shippingCost: true,
         amount: true,
@@ -71,6 +72,7 @@ export async function GET(request: Request) {
           select: {
             fromStatus: true,
             toStatus: true,
+            source: true,
             createdAt: true,
           },
         },
@@ -92,6 +94,7 @@ export async function GET(request: Request) {
         order: {
           id: pedido.id,
           status: pedido.status,
+          fulfillmentStatus: pedido.fulfillmentStatus,
           subtotal: pedido.subtotal,
           shippingCost: pedido.shippingCost,
           amount: pedido.amount,

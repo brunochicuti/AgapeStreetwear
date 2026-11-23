@@ -6,7 +6,7 @@ import { verificarAdmin } from "@/src/lib/admin";
 import { processarNotificacaoEmail } from "@/src/lib/notificacoes-email";
 
 const transicoesPermitidas: Record<string, string> = {
-  paid: "preparing",
+  pending: "preparing",
   preparing: "ready",
   ready: "shipped",
   shipped: "delivered",
@@ -29,7 +29,7 @@ export async function PATCH(
     const { userId } = await auth();
     const { id } = await context.params;
     const body = await request.json();
-    const novoStatus = body.status;
+    const novoStatus = body.fulfillmentStatus;
 
     if (!userId || typeof novoStatus !== "string") {
       return Response.json(
@@ -40,7 +40,11 @@ export async function PATCH(
 
     const pedido = await prisma.order.findUnique({
       where: { id },
-      select: { id: true, status: true },
+      select: {
+        id: true,
+        status: true,
+        fulfillmentStatus: true,
+      },
     });
 
     if (!pedido) {
@@ -50,7 +54,14 @@ export async function PATCH(
       );
     }
 
-    if (transicoesPermitidas[pedido.status] !== novoStatus) {
+    if (pedido.status !== "paid") {
+      return Response.json(
+        { error: "O pagamento precisa estar aprovado para avançar a entrega." },
+        { status: 409 }
+      );
+    }
+
+    if (transicoesPermitidas[pedido.fulfillmentStatus] !== novoStatus) {
       return Response.json(
         { error: "Transição de status não permitida." },
         { status: 400 }
@@ -61,10 +72,11 @@ export async function PATCH(
       const resultado = await tx.order.updateMany({
         where: {
           id,
-          status: pedido.status,
+          status: "paid",
+          fulfillmentStatus: pedido.fulfillmentStatus,
         },
         data: {
-          status: novoStatus,
+          fulfillmentStatus: novoStatus,
         },
       });
 
@@ -75,7 +87,7 @@ export async function PATCH(
       await tx.orderStatusHistory.create({
         data: {
           orderId: id,
-          fromStatus: pedido.status,
+          fromStatus: pedido.fulfillmentStatus,
           toStatus: novoStatus,
           source: "admin",
           changedBy: userId,
@@ -84,22 +96,27 @@ export async function PATCH(
 
       if (novoStatus === "shipped" || novoStatus === "delivered") {
         await tx.emailNotification.createMany({
-            data: {
+          data: {
             orderId: id,
             eventType:
-                novoStatus === "shipped" ? "order_shipped" : "order_delivered",
+              novoStatus === "shipped"
+                ? "order_shipped"
+                : "order_delivered",
             status: "pending",
-            },
-            skipDuplicates: true,
+          },
+          skipDuplicates: true,
         });
-        }
+      }
 
       return true;
     });
 
     if (!atualizado) {
       return Response.json(
-        { error: "O pedido foi alterado por outra operação. Atualize a página." },
+        {
+          error:
+            "O pedido foi alterado por outra operação. Atualize a página.",
+        },
         { status: 409 }
       );
     }
@@ -112,7 +129,7 @@ export async function PATCH(
 
     return Response.json({
       success: true,
-      status: novoStatus,
+      fulfillmentStatus: novoStatus,
     });
   } catch (error) {
     console.error("Erro ao atualizar status do pedido:", error);

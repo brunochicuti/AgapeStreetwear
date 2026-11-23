@@ -30,6 +30,7 @@ export async function GET() {
       orderBy: { createdDate: "desc" },
       select: {
         id: true,
+        fulfillmentStatus: true,
         status: true,
         subtotal: true,
         shippingCost: true,
@@ -63,6 +64,7 @@ export async function GET() {
         orders: orders.map((order) => ({
         id: order.id,
         status: order.status,
+        fulfillmentStatus: order.fulfillmentStatus,
         subtotal: order.subtotal,
         shippingCost: order.shippingCost,
         amount: order.amount,

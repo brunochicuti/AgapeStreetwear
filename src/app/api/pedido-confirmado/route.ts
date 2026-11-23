@@ -142,6 +142,16 @@ if (pagamentoValido) {
     if (!["pending", "failed"].includes(pedidoAntes.status)) {
       if (pedidoAntes.status === "paid") {
         await registrarNotificacoesPedido(tx, order.id);
+
+        await tx.order.updateMany({
+          where: {
+            id: order.id,
+            fulfillmentStatus: "awaiting_payment",
+          },
+          data: {
+            fulfillmentStatus: "pending",
+          },
+        });
       }
 
       return pedidoAntes.status;
@@ -158,6 +168,15 @@ if (pagamentoValido) {
     });
 
     if (pagamentoAtualizado.count > 0) {
+      await tx.order.updateMany({
+      where: {
+        id: order.id,
+        fulfillmentStatus: "awaiting_payment",
+      },
+      data: {
+        fulfillmentStatus: "pending",
+      },
+    });
       await tx.orderStatusHistory.create({
         data: {
           orderId: order.id,

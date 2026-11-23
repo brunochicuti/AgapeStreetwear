@@ -14,12 +14,14 @@ type Produto = {
 type EventoStatus = {
   fromStatus: string | null;
   toStatus: string;
+  source: string;
   createdAt: string;
 };
 
 type Pedido = {
   id: string;
   status: string;
+  fulfillmentStatus: string;
   subtotal: number;
   shippingCost: number;
   amount: number;
@@ -40,18 +42,23 @@ type Pedido = {
 };
 
 const proximoStatus: Record<string, string> = {
-  paid: "preparing",
+  pending: "preparing",
   preparing: "ready",
   ready: "shipped",
   shipped: "delivered",
 };
 
-const nomesStatus: Record<string, string> = {
+const nomesPagamento: Record<string, string> = {
   pending: "Pagamento pendente",
   paid: "Pagamento aprovado",
   failed: "Pagamento não aprovado",
   canceled: "Cancelado",
   review_required: "Pagamento em análise",
+};
+
+const nomesEntrega: Record<string, string> = {
+  awaiting_payment: "Aguardando pagamento",
+  pending: "Aguardando preparação",
   preparing: "Em preparação",
   ready: "Pronto para envio",
   shipped: "Enviado",
@@ -104,12 +111,12 @@ export default function AdminPage() {
   }, [carregarPedidos]);
 
   async function atualizarStatus(pedido: Pedido) {
-    const novoStatus = proximoStatus[pedido.status];
+    const novoStatus = proximoStatus[pedido.fulfillmentStatus];
 
     if (!novoStatus) return;
 
     const confirmar = window.confirm(
-      `Deseja alterar o pedido ${pedido.id} para "${nomesStatus[novoStatus]}"?`
+      `Deseja alterar o pedido ${pedido.id} para "${nomesEntrega[novoStatus]}"?`
     );
 
     if (!confirmar) return;
@@ -125,7 +132,7 @@ export default function AdminPage() {
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({ status: novoStatus }),
+          body: JSON.stringify({ fulfillmentStatus: novoStatus }),
         }
       );
 
@@ -190,7 +197,10 @@ export default function AdminPage() {
         ) : (
           <div className="space-y-6">
             {pedidos.map((pedido) => {
-              const proximo = proximoStatus[pedido.status];
+              const proximo = proximoStatus[pedido.fulfillmentStatus];
+              const historicoEntrega = pedido.statusHistory.filter(
+                (evento) => evento.source === "admin"
+              );
 
               return (
                 <article
@@ -210,9 +220,14 @@ export default function AdminPage() {
                       </p>
                     </div>
 
-                    <span className="h-fit rounded-full bg-neutral-800 px-4 py-2 text-xs font-bold">
-                      {nomesStatus[pedido.status] ?? pedido.status}
-                    </span>
+                    <div className="flex flex-col gap-2 text-right">
+                      <span className="rounded-full bg-neutral-800 px-4 py-2 text-xs font-bold">
+                        Pagamento: {nomesPagamento[pedido.status] ?? pedido.status}
+                      </span>
+                      <span className="rounded-full bg-neutral-800 px-4 py-2 text-xs font-bold">
+                        Entrega: {nomesEntrega[pedido.fulfillmentStatus] ?? pedido.fulfillmentStatus}
+                      </span>
+                    </div>
                   </div>
 
                   <div className="grid gap-8 py-6 md:grid-cols-2">
@@ -294,30 +309,36 @@ export default function AdminPage() {
 
                   <section className="border-t border-neutral-800 py-6">
                     <h2 className="mb-5 text-xs font-bold uppercase tracking-wider text-neutral-400">
-                      Histórico do pedido
+                      Histórico da entrega
                     </h2>
 
                     <div className="space-y-4">
-                      {pedido.statusHistory.map((evento, index) => (
-                        <div
-                          key={`${evento.toStatus}-${evento.createdAt}-${index}`}
-                          className="flex gap-3"
-                        >
-                          <span className="mt-1 h-2.5 w-2.5 shrink-0 rounded-full bg-white" />
-                          <div>
-                            <p className="text-sm font-bold">
-                              {nomesStatus[evento.toStatus] ?? evento.toStatus}
-                            </p>
-                            <p className="mt-1 text-xs text-neutral-500">
-                              {new Date(evento.createdAt).toLocaleString("pt-BR")}
-                            </p>
+                      {historicoEntrega.length === 0 ? (
+                        <p className="text-sm text-neutral-500">
+                          Nenhuma atualização de entrega registrada.
+                        </p>
+                      ) : (
+                        historicoEntrega.map((evento, index) => (
+                          <div
+                            key={`${evento.toStatus}-${evento.createdAt}-${index}`}
+                            className="flex gap-3"
+                          >
+                            <span className="mt-1 h-2.5 w-2.5 shrink-0 rounded-full bg-white" />
+                            <div>
+                              <p className="text-sm font-bold">
+                                {nomesEntrega[evento.toStatus] ?? evento.toStatus}
+                              </p>
+                              <p className="mt-1 text-xs text-neutral-500">
+                                {new Date(evento.createdAt).toLocaleString("pt-BR")}
+                              </p>
+                            </div>
                           </div>
-                        </div>
-                      ))}
+                        ))
+                      )}
                     </div>
                   </section>
 
-                  {proximo && (
+                  {proximo && pedido.status === "paid" && (
                     <div className="border-t border-neutral-800 pt-6">
                       <button
                         onClick={() => atualizarStatus(pedido)}
@@ -326,7 +347,7 @@ export default function AdminPage() {
                       >
                         {atualizando === pedido.id
                           ? "Atualizando..."
-                          : `Avançar para: ${nomesStatus[proximo]}`}
+                          : `Avançar para: ${nomesEntrega[proximo]}`}
                       </button>
                     </div>
                   )}

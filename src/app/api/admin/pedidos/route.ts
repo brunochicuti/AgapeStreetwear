@@ -21,6 +21,7 @@ export async function GET() {
       select: {
         id: true,
         status: true,
+        fulfillmentStatus: true,
         subtotal: true,
         shippingCost: true,
         amount: true,
@@ -52,6 +53,7 @@ export async function GET() {
           select: {
             fromStatus: true,
             toStatus: true,
+            source: true,
             createdAt: true,
           },
         },

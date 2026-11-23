@@ -251,6 +251,15 @@ export async function POST(request: Request) {
 
           if (pagamentoAtualizado.count > 0) {
             pedidoParaNotificar = order.id;
+              await tx.order.updateMany({
+              where: {
+                id: order.id,
+                fulfillmentStatus: "awaiting_payment",
+              },
+              data: {
+                fulfillmentStatus: "pending",
+              },
+            });
 
             await registrarNotificacoesPedido(tx, order.id);
 
@@ -266,16 +275,29 @@ export async function POST(request: Request) {
             return "paid";
           }
 
-        const pedidoAtual = await tx.order.findUnique({
-          where: { id: order.id },
-          select: { status: true },
-        });
+      const pedidoAtual = await tx.order.findUnique({
+        where: { id: order.id },
+        select: {
+          id: true,
+          status: true,
+        },
+      });
 
         if (!pedidoAtual) {
           throw new Error("Pedido não encontrado após a confirmação do pagamento.");
         }
 
         if (pedidoAtual.status === "paid") {
+          await tx.order.updateMany({
+            where: {
+              id: pedidoAtual.id,
+              fulfillmentStatus: "awaiting_payment",
+            },
+            data: {
+              fulfillmentStatus: "pending",
+            },
+          });
+
           return "already_paid";
         }
 
