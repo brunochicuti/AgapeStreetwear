@@ -62,6 +62,7 @@ if (!/^55\d{10,11}$/.test(STORE_NUMBER)) {
 const STORE_JID = `${STORE_NUMBER}@s.whatsapp.net`;
 
 let socket;
+let socketId = 0;
 let qrCodeDataUrl = null;
 let statusWhatsApp = "disconnected";
 let connecting = false;
@@ -118,6 +119,9 @@ async function conectarWhatsApp() {
   connecting = true;
   statusWhatsApp = "connecting";
 
+  const tentativaId = ++socketId;
+  console.log(`[WhatsApp] Iniciando socket #${tentativaId}`);
+
   try {
         const { state, saveCreds } =
             await criarEstadoAutenticacao();
@@ -148,7 +152,7 @@ async function conectarWhatsApp() {
       if (connection === "open") {
         statusWhatsApp = "connected";
         connecting = false;
-        console.log("WhatsApp conectado.");
+        console.log(`[WhatsApp] Socket #${tentativaId} conectado (evento open).`);
       }
 
       if (connection === "close") {
