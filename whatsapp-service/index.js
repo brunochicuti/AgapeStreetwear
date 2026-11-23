@@ -161,6 +161,10 @@ async function conectarWhatsApp() {
 
         const codigo = lastDisconnect?.error?.output?.statusCode;
 
+        console.log(
+        `[WhatsApp] Socket #${tentativaId} fechou. Código: ${codigo ?? "desconhecido"}. Motivo: ${lastDisconnect?.error?.message ?? "não informado"}`
+      );
+
         if (codigo === DisconnectReason.loggedOut) {
           statusWhatsApp = "logged_out";
           console.log("Sessão desconectada. Nova autenticação necessária.");
