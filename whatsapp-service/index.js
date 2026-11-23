@@ -93,6 +93,7 @@ recuperarProcessamentosInterrompidos()
 });
 
 function autenticar(req, res, next) {
+  console.log("[Auth] Authorization recebido:", Boolean(req.headers.authorization), "| tamanho:", req.headers.authorization?.length ?? 0);
   const recebido = Buffer.from(req.headers.authorization || "");
   const esperado = Buffer.from(`Bearer ${API_SECRET}`);
 
