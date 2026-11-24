@@ -18,7 +18,7 @@ export type Critter = {
   size?: number
 }
 
-export type FooterLink = { label: string; href: string }
+export type FooterLink = { label: React.ReactNode; href: string }
 export type FooterColumn = { title: string; links: FooterLink[] }
 
 export type FuzzyCritterFooterProps = {
@@ -979,7 +979,7 @@ export default function FuzzyCritterFooter({
               <p className="fcf-ct">{col.title}</p>
               <ul className="fcf-list">
                 {col.links.map((l) => (
-                  <li key={l.label}>
+                  <li key={l.href}>
                     <a
   className="fcf-link"
 style={
@@ -1029,7 +1029,7 @@ style={
         <span>{copyright}</span>
         <span className="fcf-legal">
           {legal.map((l) => (
-            <a key={l.label} className="fcf-link" href={l.href}>{l.label}</a>
+            <a key={l.href} className="fcf-link" href={l.href}>{l.label}</a>
           ))}
           {dropLabel ? (
             <button type="button" className="fcf-again" onClick={() => dropRef.current()}>{dropLabel}</button>
