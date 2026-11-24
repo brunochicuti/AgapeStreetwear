@@ -33,7 +33,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <body className={`${geistSans.variable} ${geistMono.variable} bg-background text-foreground`}>
           <Hydrate>
             <Navbar />
-            <main>{children}</main>
+            <main className="pt-32 md:pt-0">{children}</main>
             <SiteFooter />
             <CookiePanel />
           </Hydrate>
