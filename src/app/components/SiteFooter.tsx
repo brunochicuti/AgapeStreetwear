@@ -5,7 +5,6 @@ import { usePathname } from "next/navigation";
 import FuzzyCritterFooter, {
   type Critter,
   type FooterColumn,
-  type FooterLink,
 } from "./ui/fuzzy-critter-footer";
 
 const CRITTERS: Critter[] = [
@@ -37,15 +36,14 @@ const CRITTERS: Critter[] = [
 
 const COLUMNS: FooterColumn[] = [
   {
-    title: "Loja",
+    title: "EXPLORAR",
     links: [
       { label: "Início", href: "/" },
-      { label: "Produtos", href: "/product" },
       { label: "Acompanhar pedido", href: "/acompanhar-pedido" },
     ],
   },
   {
-    title: "Institucional",
+    title: "INSTITUCIONAL",
     links: [
       { label: "Termos de uso", href: "/termos" },
       { label: "Privacidade", href: "/privacidade" },
@@ -53,18 +51,30 @@ const COLUMNS: FooterColumn[] = [
     ],
   },
   {
-    title: "Minha conta",
+    title: "ATENDIMENTO",
     links: [
-      { label: "Entrar", href: "/sign-in" },
-      { label: "Criar conta", href: "/sign-up" },
+      {
+        label: "Fale conosco",
+        href: "https://wa.me/5567981617997?text=Ol%C3%A1%21%20Vim%20pelo%20site%20da%20Agape%20Streetwear%20e%20gostaria%20de%20saber%20mais%20sobre%20os%20produtos%20e%20receber%20atendimento.%20%F0%9F%98%8A",
+      },
+      {
+        label: "Dúvidas sobre pedidos",
+        href: "mailto:suporte@in.agapestreetwear.com.br",
+      },
+    ],
+  },
+  {
+    title: "CONECTE-SE",
+    links: [
+      {
+        label: "Instagram",
+        href: "https://www.instagram.com/agape.streetwearr/",
+      },
     ],
   },
 ];
 
-const LEGAL: FooterLink[] = [
-  { label: "Privacidade", href: "/privacidade" },
-  { label: "Termos", href: "/termos" },
-];
+const LEGAL: { label: string; href: string }[] = [];
 
 export default function SiteFooter() {
   const pathname = usePathname();

@@ -60,7 +60,7 @@ const CSS =
   ".fcf-top{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,2fr);gap:48px}" +
   ".fcf-name{margin:0;font-size:22px;line-height:1.2;font-weight:500;letter-spacing:-.02em}" +
   ".fcf-tag{margin:8px 0 0;max-width:26ch;font-size:15px;line-height:1.5;color:var(--color-muted-foreground)}" +
-  ".fcf-cols{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:24px}" +
+  ".fcf-cols{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:24px}" +
   ".fcf-ct{margin:0 0 14px;font-size:13px;line-height:1.2;color:var(--color-muted-foreground)}" +
   ".fcf-list{margin:0;padding:0;list-style:none}" +
   ".fcf-list li{margin:0;line-height:1.3}" +
