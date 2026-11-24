@@ -67,6 +67,8 @@ const CSS =
   ".fcf-list li+li{margin-top:10px}" +
   ".fcf-link{position:relative;z-index:3;color:var(--color-foreground);text-decoration:none;font-size:15px;transition:color .2s ease}" +
   ".fcf-link:hover{color:var(--color-muted-foreground)}" +
+  ".fcf-instagram-icon{display:block;filter:drop-shadow(0 3px 0 #57000b) drop-shadow(0 5px 5px rgba(193,18,37,.25));transition:transform .3s ease,filter .3s ease}" +
+  ".fcf-link:hover .fcf-instagram-icon{transform:perspective(400px) rotateY(-12deg) rotateX(8deg) translateY(-4px) scale(1.12);filter:drop-shadow(0 5px 0 #57000b) drop-shadow(0 9px 12px rgba(239,68,68,.5))}" +
   ".fcf-link:focus-visible,.fcf-again:focus-visible{outline:2px solid var(--color-primary);outline-offset:3px;border-radius:2px}" +
   ".fcf-bottom{position:relative;z-index:3;display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;gap:12px 24px;margin-top:64px;padding-top:20px;border-top:1px solid var(--color-border);font-size:13px;line-height:1.3;color:var(--color-muted-foreground)}" +
   ".fcf-legal{display:inline-flex;flex-wrap:wrap;align-items:baseline;gap:20px}" +
@@ -992,29 +994,22 @@ style={
       ? "mailto:suporte@in.agapestreetwear.com.br"
       : l.href
   }
-  onClick={
-    l.label === "Dúvidas?"
-      ? (event) => {
-          event.preventDefault();
+onClick={
+  l.label === "Dúvidas?"
+    ? (event) => {
+        event.preventDefault();
 
-          const isMobile =
-            /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+        const email = "suporte@in.agapestreetwear.com.br";
+        const subject = "Dúvidas";
 
-          const email = "suporte@in.agapestreetwear.com.br";
-          const subject = "Dúvidas";
-
-          if (isMobile) {
-            window.location.href = `mailto:${email}?subject=${encodeURIComponent(subject)}`;
-          } else {
-            window.open(
-              `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(email)}&su=${encodeURIComponent(subject)}`,
-              "_blank",
-              "noopener,noreferrer",
-            );
-          }
-        }
-      : undefined
-  }
+        window.open(
+          `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(email)}&su=${encodeURIComponent(subject)}`,
+          "_blank",
+          "noopener,noreferrer",
+        );
+      }
+    : undefined
+}
 >
   {l.label}
 </a>
