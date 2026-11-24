@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Show, SignInButton, UserButton } from "@clerk/nextjs";
 import { motion } from "framer-motion";
-import { Home, PackageSearch, MessageCircle, ShieldCheck } from "lucide-react";
+import { Home, PackageSearch, MessageCircle, ShieldCheck, UserRound } from "lucide-react";
 import Cart from "./Cart";
 import { useEffect, useState } from "react";
 
@@ -157,15 +157,16 @@ useEffect(() => {
           <Show when="signed-out">
             <SignInButton mode="modal">
               <button className="
-                block
-                px-2 py-1 md:px-4 md:py-2 rounded-full
-                border border-white/20
-                text-white text-[9px] md:text-xs font-semibold uppercase
-                tracking-wider whitespace-nowrap
+                flex h-9 w-9 items-center justify-center rounded-full
+                border border-white/20 text-white
                 transition-all duration-300
                 hover:bg-white hover:text-black
+                md:h-auto md:w-auto md:px-4 md:py-2
               ">
-                Fazer login
+                <UserRound size={18} className="md:hidden" />
+                <span className="hidden md:inline text-xs font-semibold uppercase tracking-wider">
+                  Fazer login
+                </span>
               </button>
             </SignInButton>
           </Show>
