@@ -170,6 +170,9 @@ model PrivacyRequest {
 
   type      String
   source    String
+  requesterName  String?
+  requesterEmail String?
+  description    String?
   status    String   @default("PENDENTE")
 
   receivedAt  DateTime @default(now())

@@ -47,6 +47,9 @@ type SolicitacaoPrivacidade = {
   userId: number | null;
   type: string;
   source: string;
+  requesterName: string | null;
+  requesterEmail: string | null;
+  description: string | null;
   status: string;
   receivedAt: string;
   completedAt: string | null;
@@ -99,6 +102,12 @@ export default function AdminPage() {
   const [carregandoSolicitacoes, setCarregandoSolicitacoes] = useState(true);
   const [atualizandoSolicitacao, setAtualizandoSolicitacao] = useState<string | null>(null);
   const [erroPrivacidade, setErroPrivacidade] = useState("");
+  const [nomeSolicitante, setNomeSolicitante] = useState("");
+  const [emailSolicitante, setEmailSolicitante] = useState("");
+  const [descricaoSolicitacao, setDescricaoSolicitacao] = useState("");
+  const [tipoSolicitacao, setTipoSolicitacao] = useState("ACESSO");
+  const [fonteSolicitacao, setFonteSolicitacao] = useState("EMAIL");
+  const [salvandoSolicitacao, setSalvandoSolicitacao] = useState(false);
 
   const carregarPedidos = useCallback(async () => {
     try {
@@ -277,6 +286,58 @@ export default function AdminPage() {
   }
 
 
+  async function cadastrarSolicitacao(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    try {
+      setSalvandoSolicitacao(true);
+      setErroPrivacidade("");
+
+      const resposta = await fetch(
+        "/api/admin/solicitacoes-privacidade",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            requesterName: nomeSolicitante,
+            requesterEmail: emailSolicitante,
+            description: descricaoSolicitacao,
+            type: tipoSolicitacao,
+            source: fonteSolicitacao,
+          }),
+        }
+      );
+
+      const dados = await resposta.json();
+
+      if (!resposta.ok) {
+        throw new Error(
+          dados.error || "Não foi possível cadastrar a solicitação."
+        );
+      }
+
+      setNomeSolicitante("");
+      setEmailSolicitante("");
+      setDescricaoSolicitacao("");
+      setTipoSolicitacao("ACESSO");
+      setFonteSolicitacao("EMAIL");
+
+      await carregarSolicitacoes();
+    } catch (error) {
+      setErroPrivacidade(
+        error instanceof Error
+          ? error.message
+          : "Erro ao cadastrar solicitação."
+      );
+    } finally {
+      setSalvandoSolicitacao(false);
+    }
+  }
+
+
+
   return (
     <main className="min-h-screen bg-neutral-950 px-6 pt-32 pb-10 text-white">
       <div className="mx-auto max-w-6xl">
@@ -320,6 +381,104 @@ export default function AdminPage() {
               Atualizar solicitações
             </button>
           </div>
+
+
+          <form
+            onSubmit={cadastrarSolicitacao}
+            className="mb-8 rounded-xl border border-neutral-800 bg-neutral-950 p-5 sm:p-6"
+          >
+            <h3 className="mb-5 text-sm font-black uppercase tracking-wider">
+              Registrar nova solicitação
+            </h3>
+
+            <div className="grid gap-5 sm:grid-cols-2">
+              <label className="text-sm text-neutral-300">
+                Nome do solicitante
+                <input
+                  type="text"
+                  required
+                  maxLength={120}
+                  value={nomeSolicitante}
+                  onChange={(e) => setNomeSolicitante(e.target.value)}
+                  className="mt-2 w-full rounded-lg border border-neutral-700 bg-neutral-900 px-4 py-3 text-white outline-none focus:border-white"
+                  placeholder="Nome completo"
+                />
+              </label>
+
+              <label className="text-sm text-neutral-300">
+                E-mail para contato
+                <input
+                  type="email"
+                  required
+                  maxLength={254}
+                  value={emailSolicitante}
+                  onChange={(e) => setEmailSolicitante(e.target.value)}
+                  className="mt-2 w-full rounded-lg border border-neutral-700 bg-neutral-900 px-4 py-3 text-white outline-none focus:border-white"
+                  placeholder="cliente@email.com"
+                />
+              </label>
+
+              <label className="text-sm text-neutral-300">
+                Tipo de solicitação
+                <select
+                  value={tipoSolicitacao}
+                  onChange={(e) => setTipoSolicitacao(e.target.value)}
+                  className="mt-2 w-full rounded-lg border border-neutral-700 bg-neutral-900 px-4 py-3 text-white outline-none focus:border-white"
+                >
+                  <option value="ACESSO">Acesso aos dados</option>
+                  <option value="CORRECAO">Correção de dados</option>
+                  <option value="EXCLUSAO">Exclusão de dados</option>
+                  <option value="ANONIMIZACAO">Anonimização</option>
+                  <option value="BLOQUEIO">Bloqueio de dados</option>
+                  <option value="PORTABILIDADE">Portabilidade</option>
+                  <option value="INFORMACOES_COMPARTILHAMENTO">
+                    Informações sobre compartilhamento
+                  </option>
+                  <option value="REVOGACAO_CONSENTIMENTO">
+                    Revogação de consentimento
+                  </option>
+                  <option value="OUTRO">Outro</option>
+                </select>
+              </label>
+
+              <label className="text-sm text-neutral-300">
+                Canal de recebimento
+                <select
+                  value={fonteSolicitacao}
+                  onChange={(e) => setFonteSolicitacao(e.target.value)}
+                  className="mt-2 w-full rounded-lg border border-neutral-700 bg-neutral-900 px-4 py-3 text-white outline-none focus:border-white"
+                >
+                  <option value="EMAIL">E-mail</option>
+                  <option value="WHATSAPP">WhatsApp</option>
+                  <option value="OUTRO">Outro canal</option>
+                </select>
+              </label>
+
+              <label className="text-sm text-neutral-300 sm:col-span-2">
+                Descrição da solicitação
+                <textarea
+                  required
+                  maxLength={3000}
+                  rows={4}
+                  value={descricaoSolicitacao}
+                  onChange={(e) => setDescricaoSolicitacao(e.target.value)}
+                  className="mt-2 w-full resize-y rounded-lg border border-neutral-700 bg-neutral-900 px-4 py-3 text-white outline-none focus:border-white"
+                  placeholder="Descreva o pedido recebido e as informações relevantes..."
+                />
+              </label>
+            </div>
+
+            <button
+              type="submit"
+              disabled={salvandoSolicitacao}
+              className="mt-5 rounded-lg bg-white px-6 py-3 text-sm font-bold uppercase text-black transition hover:bg-neutral-300 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {salvandoSolicitacao
+                ? "Registrando..."
+                : "Registrar solicitação"}
+            </button>
+          </form>
+
 
           {erroPrivacidade && (
             <div className="mb-5 rounded-lg border border-red-900 bg-red-950 p-4 text-sm text-red-300">
@@ -365,6 +524,39 @@ export default function AdminPage() {
                       {solicitacao.status}
                     </span>
                   </div>
+
+
+                  {(solicitacao.requesterName ||
+                    solicitacao.requesterEmail ||
+                    solicitacao.description) && (
+                    <div className="mt-4 space-y-2 border-t border-neutral-800 pt-4 text-sm">
+                      {solicitacao.requesterName && (
+                        <p className="text-neutral-300">
+                          <span className="font-bold">Solicitante:</span>{" "}
+                          {solicitacao.requesterName}
+                        </p>
+                      )}
+
+                      {solicitacao.requesterEmail && (
+                        <p className="text-neutral-300">
+                          <span className="font-bold">E-mail:</span>{" "}
+                          {solicitacao.requesterEmail}
+                        </p>
+                      )}
+
+                      {solicitacao.description && (
+                        <div>
+                          <p className="mb-1 font-bold text-neutral-300">
+                            Descrição:
+                          </p>
+                          <p className="whitespace-pre-wrap text-neutral-400">
+                            {solicitacao.description}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
 
                   {solicitacao.decision && (
                     <div className="mt-4 border-t border-neutral-800 pt-4 text-sm">

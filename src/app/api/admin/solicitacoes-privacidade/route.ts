@@ -14,6 +14,115 @@ const statusPermitidos = [
 
 const statusFinais = ["CONCLUIDA", "PARCIAL", "INDEFERIDA"];
 
+const tiposPermitidos = [
+  "ACESSO",
+  "CORRECAO",
+  "EXCLUSAO",
+  "ANONIMIZACAO",
+  "BLOQUEIO",
+  "PORTABILIDADE",
+  "INFORMACOES_COMPARTILHAMENTO",
+  "REVOGACAO_CONSENTIMENTO",
+  "OUTRO",
+];
+
+const fontesPermitidas = ["EMAIL", "WHATSAPP", "OUTRO"];
+
+
+export async function POST(request: Request) {
+  await connection();
+
+  try {
+    if (!(await verificarAdmin())) {
+      return Response.json(
+        { error: "Acesso não autorizado." },
+        { status: 403 }
+      );
+    }
+
+    let body: Record<string, unknown>;
+
+    try {
+      body = await request.json();
+    } catch {
+      return Response.json(
+        { error: "Corpo da requisição inválido." },
+        { status: 400 }
+      );
+    }
+
+    const nome =
+      typeof body.requesterName === "string"
+        ? body.requesterName.trim()
+        : "";
+
+    const email =
+      typeof body.requesterEmail === "string"
+        ? body.requesterEmail.trim().toLowerCase()
+        : "";
+
+    const descricao =
+      typeof body.description === "string"
+        ? body.description.trim()
+        : "";
+
+    const tipo = body.type;
+    const fonte = body.source;
+
+    if (
+      !nome ||
+      nome.length > 120 ||
+      !email ||
+      email.length > 254 ||
+      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ||
+      !descricao ||
+      descricao.length > 3000 ||
+      typeof tipo !== "string" ||
+      !tiposPermitidos.includes(tipo) ||
+      typeof fonte !== "string" ||
+      !fontesPermitidas.includes(fonte)
+    ) {
+      return Response.json(
+        { error: "Confira os dados informados. Há campos inválidos ou ausentes." },
+        { status: 400 }
+      );
+    }
+
+    const solicitacao = await prisma.privacyRequest.create({
+      data: {
+        requesterName: nome,
+        requesterEmail: email,
+        description: descricao,
+        type: tipo,
+        source: fonte,
+      },
+      select: {
+        id: true,
+        requesterName: true,
+        requesterEmail: true,
+        description: true,
+        type: true,
+        source: true,
+        status: true,
+        receivedAt: true,
+      },
+    });
+
+    return Response.json(
+      { success: true, solicitacao },
+      { status: 201 }
+    );
+  } catch (error) {
+    console.error("Erro ao cadastrar solicitação de privacidade:", error);
+
+    return Response.json(
+      { error: "Não foi possível cadastrar a solicitação." },
+      { status: 500 }
+    );
+  }
+}
+
+
 export async function GET() {
   await connection();
 
@@ -33,6 +142,9 @@ export async function GET() {
         userId: true,
         type: true,
         source: true,
+        requesterName: true,
+        requesterEmail: true,
+        description: true,
         status: true,
         receivedAt: true,
         completedAt: true,
