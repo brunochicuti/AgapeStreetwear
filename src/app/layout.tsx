@@ -6,6 +6,7 @@ import { CookiePanel } from "./components/ui/cookie-banner-1";
 import { ClerkProvider } from "@clerk/nextjs";
 import { ptBR } from "@clerk/localizations";
 import Hydrate from "./components/Hydrate";
+import SiteFooter from "./components/SiteFooter";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -33,6 +34,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           <Hydrate>
             <Navbar />
             <main>{children}</main>
+            <SiteFooter />
             <CookiePanel />
           </Hydrate>
         </body>
