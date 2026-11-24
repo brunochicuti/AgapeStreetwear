@@ -980,7 +980,44 @@ export default function FuzzyCritterFooter({
               <ul className="fcf-list">
                 {col.links.map((l) => (
                   <li key={l.label}>
-                    <a className="fcf-link" href={l.href}>{l.label}</a>
+                    <a
+  className="fcf-link"
+style={
+  l.label === "Dúvidas?"
+    ? { textDecoration: "underline", textUnderlineOffset: "4px" }
+    : undefined
+}
+  href={
+    l.label === "Dúvidas sobre pedidos"
+      ? "mailto:suporte@in.agapestreetwear.com.br"
+      : l.href
+  }
+  onClick={
+    l.label === "Dúvidas sobre pedidos"
+      ? (event) => {
+          event.preventDefault();
+
+          const isMobile =
+            /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+
+          const email = "suporte@in.agapestreetwear.com.br";
+          const subject = "Dúvidas sobre pedidos";
+
+          if (isMobile) {
+            window.location.href = `mailto:${email}?subject=${encodeURIComponent(subject)}`;
+          } else {
+            window.open(
+              `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(email)}&su=${encodeURIComponent(subject)}`,
+              "_blank",
+              "noopener,noreferrer",
+            );
+          }
+        }
+      : undefined
+  }
+>
+  {l.label}
+</a>
                   </li>
                 ))}
               </ul>

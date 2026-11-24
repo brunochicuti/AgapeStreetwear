@@ -59,7 +59,7 @@ const COLUMNS: FooterColumn[] = [
       },
       {
         label: "Dúvidas sobre pedidos",
-        href: "mailto:suporte@in.agapestreetwear.com.br",
+        href: "https://mail.google.com/mail/?view=cm&fs=1&to=suporte%40in.agapestreetwear.com.br&su=Duvidas%20sobre%20pedidos",
       },
     ],
   },
