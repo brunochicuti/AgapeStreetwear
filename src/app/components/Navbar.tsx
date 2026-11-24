@@ -46,7 +46,7 @@ useEffect(() => {
         {/* LOGO */}
         <Link
           href="/"
-          className="text-white font-bold text-xl md:text-2xl tracking-tight uppercase"
+          className="text-white font-bold text-base md:text-2xl tracking-tight uppercase"
         >
           AGAPE<br/>STREETWEAR
           <span className="text-red-600">.</span>
@@ -157,7 +157,7 @@ useEffect(() => {
           <Show when="signed-out">
             <SignInButton mode="modal">
               <button className="
-                hidden sm:block
+                block
                 px-4 py-2 rounded-full
                 border border-white/20
                 text-white text-xs font-semibold uppercase
