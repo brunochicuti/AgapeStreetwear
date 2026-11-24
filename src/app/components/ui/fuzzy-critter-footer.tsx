@@ -90,7 +90,7 @@ const CSS =
   ".fcf-sr{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}" +
   "@media (hover:hover) and (pointer:fine){.fcf-root.fcf-over{cursor:grab}}" +
   ".fcf-root.fcf-grab,.fcf-root.fcf-grab *{cursor:grabbing !important;user-select:none;-webkit-user-select:none}" +
-  "@media (max-width:760px){.fcf-top{grid-template-columns:minmax(0,1fr);gap:36px}.fcf-cols{grid-template-columns:repeat(2,minmax(0,1fr));row-gap:32px}}" +
+  "@media (max-width:760px){.fcf-root{padding-bottom:24px}.fcf-top{grid-template-columns:minmax(0,1fr);gap:36px}.fcf-cols{grid-template-columns:repeat(2,minmax(0,1fr));row-gap:32px}}" +
   "@media (prefers-reduced-motion:reduce){.fcf-stage,.fcf-link,.fcf-again{transition:none}}"
 
 const DEFAULT_COLUMNS: FooterColumn[] = [
