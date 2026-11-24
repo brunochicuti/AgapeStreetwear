@@ -988,12 +988,12 @@ style={
     : undefined
 }
   href={
-    l.label === "Dúvidas sobre pedidos"
+    l.label === "Dúvidas?"
       ? "mailto:suporte@in.agapestreetwear.com.br"
       : l.href
   }
   onClick={
-    l.label === "Dúvidas sobre pedidos"
+    l.label === "Dúvidas?"
       ? (event) => {
           event.preventDefault();
 
@@ -1001,7 +1001,7 @@ style={
             /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 
           const email = "suporte@in.agapestreetwear.com.br";
-          const subject = "Dúvidas sobre pedidos";
+          const subject = "Dúvidas";
 
           if (isMobile) {
             window.location.href = `mailto:${email}?subject=${encodeURIComponent(subject)}`;
