@@ -46,7 +46,7 @@ return (
       >
       <ClothingRailHero
         items={items}
-        hanger="wood"
+        hanger="none"
         eyebrow="Loja Ágape"
         heading="Arara de Produtos"
         caption="Passe o cursor e clique na peça para ver os detalhes e as diferentes vistas."
