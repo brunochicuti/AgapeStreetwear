@@ -32,9 +32,9 @@ export default function ClothingRailHeroDemo({
       kind: "tee",
       color: "#EFEBE2",
       tag: camisa?.etiqueta ?? undefined,
-      image: "/images/camisa_agape_frente.png",
-      backImage: "/images/camisa_agape_costas.png",
-      sideImage: "/images/camisa_agape_lado.png",
+      image: "/images/Camiseta_cabide_frente.png",
+      backImage: "/images/camiseta_cabide_costas.png",
+      sideImage: "/images/camiseta_cabide_lado.png",
       product: camisa,
     },
   ];
