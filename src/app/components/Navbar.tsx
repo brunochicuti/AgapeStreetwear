@@ -146,7 +146,7 @@ useEffect(() => {
         </div>
 
         {/* AÇÕES */}
-        <div className="flex items-center gap-4 order-2 md:order-3">
+        <div className="flex items-center gap-2 order-2 md:order-3 shrink-0">
 
           <Cart />
 
@@ -158,10 +158,10 @@ useEffect(() => {
             <SignInButton mode="modal">
               <button className="
                 block
-                px-4 py-2 rounded-full
+                px-2 py-1 md:px-4 md:py-2 rounded-full
                 border border-white/20
-                text-white text-xs font-semibold uppercase
-                tracking-wider
+                text-white text-[9px] md:text-xs font-semibold uppercase
+                tracking-wider whitespace-nowrap
                 transition-all duration-300
                 hover:bg-white hover:text-black
               ">
