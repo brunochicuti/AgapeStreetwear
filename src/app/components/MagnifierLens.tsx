@@ -89,23 +89,6 @@ function handlePointerEnter(e: ReactPointerEvent<HTMLDivElement>) {
   setHovering(true);
 }
 
-function handleMouseEnter(e: React.MouseEvent<HTMLDivElement>) {
-  if (!desktopPortal) return;
-
-  const rect = e.currentTarget.getBoundingClientRect();
-
-  setDesktopLensPosition({
-    clientX: e.clientX,
-    clientY: e.clientY,
-    left: rect.left,
-    top: rect.top,
-    width: rect.width,
-    height: rect.height,
-  });
-
-  setHovering(true);
-}
-
 
 function handlePointerMove(e: ReactPointerEvent<HTMLDivElement>) {
   if (e.pointerType !== "mouse") return;
@@ -130,7 +113,9 @@ function handlePointerMove(e: ReactPointerEvent<HTMLDivElement>) {
 useEffect(() => {
   if (!desktopPortal || !hovering) return;
 
-  const acompanharMouse = (event: MouseEvent) => {
+  const acompanharMouse = (event: PointerEvent) => {
+    if (event.pointerType !== "mouse") return;
+
     const element = wrapperRef.current;
     if (!element) return;
 
@@ -157,10 +142,10 @@ useEffect(() => {
     });
   };
 
-  document.addEventListener("mousemove", acompanharMouse);
+  document.addEventListener("pointermove", acompanharMouse);
 
   return () => {
-    document.removeEventListener("mousemove", acompanharMouse);
+    document.removeEventListener("pointermove", acompanharMouse);
   };
 }, [desktopPortal, hovering]);
 
@@ -269,7 +254,6 @@ useEffect(() => {
   return (
     <div
       ref={wrapperRef}
-      onMouseEnter={handleMouseEnter}
       className={`relative h-full w-full overflow-visible ${
         touchZoom.active ? "touch-none" : "touch-pan-y"
       }`}
@@ -278,6 +262,18 @@ useEffect(() => {
       onPointerUp={handlePointerUp}
       onPointerEnter={handlePointerEnter}
       onPointerMove={handlePointerMove}
+    onPointerLeave={(e) => {
+    if (e.pointerType === "mouse") {
+        console.log("SAIU:", {
+        relatedTarget: e.relatedTarget,
+        dentroDoComponente: e.currentTarget.contains(
+            e.relatedTarget as Node | null
+        ),
+        });
+
+        setHovering(false);
+    }
+    }}
       onClickCapture={handleClickCapture}
     >
       {children}
