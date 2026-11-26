@@ -19,7 +19,7 @@ export async function GET() {
 
     while (true) {
       const pagina = await stripe.products.list({
-        active: true,
+        active: undefined,
         limit: 100,
         ...(startingAfter ? { starting_after: startingAfter } : {}),
       });
