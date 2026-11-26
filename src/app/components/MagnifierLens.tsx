@@ -66,7 +66,6 @@ export default function MagnifierLens({
 
 function handlePointerEnter(e: PointerEvent<HTMLDivElement>) {
   if (e.pointerType !== "mouse") return;
-  console.log("POINTER ENTER:", e.pointerType, e.clientX, e.clientY);
 
   const rect = e.currentTarget.getBoundingClientRect();
 
@@ -79,12 +78,6 @@ function handlePointerEnter(e: PointerEvent<HTMLDivElement>) {
     width: rect.width,
     height: rect.height,
   });
-    console.log("LUPA:", {
-    hovering: true,
-    rect,
-    clientX: e.clientX,
-    clientY: e.clientY,
-    });
   setHovering(true);
 }
 
@@ -221,18 +214,9 @@ function handlePointerMove(e: PointerEvent<HTMLDivElement>) {
       onPointerUp={handlePointerUp}
       onPointerEnter={handlePointerEnter}
       onPointerMove={handlePointerMove}
-    onPointerLeave={(e) => {
-    if (e.pointerType === "mouse") {
-        console.log("SAIU:", {
-        relatedTarget: e.relatedTarget,
-        dentroDoComponente: e.currentTarget.contains(
-            e.relatedTarget as Node | null
-        ),
-        });
-
-        setHovering(false);
-    }
-    }}
+      onPointerLeave={(e) => {
+        if (e.pointerType === "mouse") setHovering(false);
+      }}
       onClickCapture={handleClickCapture}
     >
       {children}
@@ -250,7 +234,7 @@ function handlePointerMove(e: PointerEvent<HTMLDivElement>) {
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.92 }}
                 transition={{ duration: 0.12 }}
-                className="pointer-events-none fixed z-[2147483647] overflow-hidden rounded-full border-4 border-red-500 bg-red-500/40"
+                className="pointer-events-none fixed z-[9999] overflow-hidden rounded-full border-2 border-white/80"
                 style={{
                   left: desktopLensPosition.clientX - lensSize / 2,
                   top: desktopLensPosition.clientY - lensSize / 2,
@@ -339,7 +323,7 @@ function handlePointerMove(e: PointerEvent<HTMLDivElement>) {
           )}
         </AnimatePresence>
       )}
-
+      
       {/* Zoom para celular */}
       <AnimatePresence>
         {touchZoom.active && (
