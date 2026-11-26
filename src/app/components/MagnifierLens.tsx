@@ -45,6 +45,7 @@ export default function MagnifierLens({
   });
 
   const touchInteraction = useRef(false);
+  const lastTap = useRef(0);
 
   function handlePointerDown(e: PointerEvent<HTMLDivElement>) {
     if (e.pointerType !== "touch") return;
@@ -145,13 +146,21 @@ export default function MagnifierLens({
     pointers.current.delete(e.pointerId);
 
     if (pointers.current.size === 0) {
-      if (!gesture.current.pinched && !gesture.current.moved) {
-        setTouchZoom((current) => ({
-          ...current,
-          active: !current.active,
-          scale: zoomFactor,
-        }));
-      }
+        if (!gesture.current.pinched && !gesture.current.moved) {
+        const now = Date.now();
+
+        if (now - lastTap.current < 300) {
+            setTouchZoom((current) => ({
+            ...current,
+            active: !current.active,
+            scale: zoomFactor,
+            }));
+
+            lastTap.current = 0;
+        } else {
+            lastTap.current = now;
+        }
+        }
 
       pinchStart.current = null;
     }
