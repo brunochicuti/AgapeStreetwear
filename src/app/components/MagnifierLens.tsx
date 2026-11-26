@@ -142,10 +142,10 @@ useEffect(() => {
     });
   };
 
-  document.addEventListener("pointermove", acompanharMouse);
+  document.addEventListener("pointermove", acompanharMouse, true);
 
   return () => {
-    document.removeEventListener("pointermove", acompanharMouse);
+    document.removeEventListener("pointermove", acompanharMouse, true);
   };
 }, [desktopPortal, hovering]);
 
