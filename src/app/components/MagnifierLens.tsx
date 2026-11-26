@@ -217,6 +217,11 @@ function handlePointerMove(e: PointerEvent<HTMLDivElement>) {
       onPointerEnter={handlePointerEnter}
       onPointerMove={handlePointerMove}
       onClickCapture={handleClickCapture}
+      onPointerLeave={(e) => {
+        if (e.pointerType === "mouse") {
+            setHovering(false);
+        }
+        }}
     >
       {children}
 
