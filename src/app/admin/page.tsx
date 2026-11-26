@@ -2,6 +2,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import BibliotecaImagens from "./components/BibliotecaImagens";
 
 type Produto = {
   id: string;
@@ -619,6 +620,11 @@ export default function AdminPage() {
               ))}
             </div>
           )}
+        </section>
+
+
+        <section className="mb-10 rounded-xl border border-neutral-800 bg-neutral-900 p-6 sm:p-8">
+          <BibliotecaImagens />
         </section>
 
 

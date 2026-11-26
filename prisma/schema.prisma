@@ -197,3 +197,23 @@ model PrivacyRequest {
   @@index([status, receivedAt])
   @@index([userId])
 }
+
+
+enum ProductImageAngle {
+  FRENTE
+  LADO
+  COSTAS
+}
+
+model ProductImage {
+  id              String            @id @default(cuid())
+  stripeProductId String
+  angle           ProductImageAngle
+  url             String
+  publicId        String
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  @@unique([stripeProductId, angle])
+  @@index([stripeProductId])
+}
