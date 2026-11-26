@@ -79,6 +79,12 @@ function handlePointerEnter(e: PointerEvent<HTMLDivElement>) {
     width: rect.width,
     height: rect.height,
   });
+    console.log("LUPA:", {
+    hovering: true,
+    rect,
+    clientX: e.clientX,
+    clientY: e.clientY,
+    });
   setHovering(true);
 }
 
