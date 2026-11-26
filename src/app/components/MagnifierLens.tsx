@@ -66,6 +66,7 @@ export default function MagnifierLens({
 
 function handlePointerEnter(e: PointerEvent<HTMLDivElement>) {
   if (e.pointerType !== "mouse") return;
+  console.log("POINTER ENTER:", e.pointerType, e.clientX, e.clientY);
 
   const rect = e.currentTarget.getBoundingClientRect();
 
@@ -323,7 +324,7 @@ function handlePointerMove(e: PointerEvent<HTMLDivElement>) {
           )}
         </AnimatePresence>
       )}
-      
+
       {/* Zoom para celular */}
       <AnimatePresence>
         {touchZoom.active && (
