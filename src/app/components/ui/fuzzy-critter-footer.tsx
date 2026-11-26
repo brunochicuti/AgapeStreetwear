@@ -997,6 +997,15 @@ style={
 onClick={
   l.label === "Dúvidas?"
     ? (event) => {
+        const dispositivoMovel =
+          /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) ||
+          (navigator.platform === "MacIntel" &&
+            navigator.maxTouchPoints > 1);
+
+        if (dispositivoMovel) {
+          return;
+        }
+
         event.preventDefault();
 
         const email = "suporte@in.agapestreetwear.com.br";

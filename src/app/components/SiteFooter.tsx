@@ -58,7 +58,7 @@ const COLUMNS: FooterColumn[] = [
         href: "https://wa.me/5567981617997?text=Ol%C3%A1%21%20Vim%20pelo%20site%20da%20Agape%20Streetwear%20e%20gostaria%20de%20saber%20mais%20sobre%20os%20produtos%20e%20receber%20atendimento.%20%F0%9F%98%8A",
       },
       {
-        label: <u>Dúvidas?</u>,
+        label: "Dúvidas?",
         href: "mailto:suporte@in.agapestreetwear.com.br?subject=D%C3%BAvidas%20sobre%20pedidos",
       },
     ],
