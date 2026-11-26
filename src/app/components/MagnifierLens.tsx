@@ -221,29 +221,15 @@ function handlePointerMove(e: PointerEvent<HTMLDivElement>) {
       onPointerUp={handlePointerUp}
       onPointerEnter={handlePointerEnter}
       onPointerMove={handlePointerMove}
-      onPointerLeave={(e) => {
-        if (e.pointerType === "mouse") setHovering(false);
-      }}
+        onPointerLeave={(e) => {
+        if (e.pointerType === "mouse") {
+            console.log("MOUSE SAIU DA ÁREA");
+            setHovering(false);
+        }
+        }}
       onClickCapture={handleClickCapture}
     >
       {children}
-
-      {desktopPortal &&
-        typeof document !== "undefined" &&
-        createPortal(
-            <div
-            style={{
-                position: "fixed",
-                top: 30,
-                left: 30,
-                width: 100,
-                height: 100,
-                background: "red",
-                zIndex: 2147483647,
-            }}
-            />,
-            document.body
-        )}
 
       {/* Lupa circular para computador */}
       {/* Lupa circular para computador */}
