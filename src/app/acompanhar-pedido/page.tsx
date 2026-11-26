@@ -298,7 +298,7 @@ export default function AcompanharPedidoPage() {
   }, [router]);
 
   return (
-    <main className="min-h-screen bg-white px-5 py-12 text-black">
+    <main className="min-h-screen bg-white px-5 pt-24 pb-12 text-black">
       <div className="mx-auto w-full max-w-3xl">
         <header className="mb-10 text-center">
           <p className="text-xs font-bold uppercase tracking-[0.3em] text-gray-400">

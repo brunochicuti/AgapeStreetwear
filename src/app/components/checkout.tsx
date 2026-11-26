@@ -924,7 +924,7 @@ const total = pedidoRecuperado
     <div className="min-h-[calc(100vh-8rem)] bg-white px-4 pt-28 pb-10 text-black sm:px-8 sm:pt-32 lg:px-12">
       <div className="mx-auto max-w-6xl">
       <div className="mb-8 border-b border-gray-200 pb-6">
-        <div className="flex items-center gap-5">
+        <div className="flex flex-col items-start gap-5 sm:flex-row sm:items-center">
           <Link
             href="/"
             className="inline-flex shrink-0 items-center gap-2 rounded-lg border border-black bg-white px-5 py-3 text-xs font-bold uppercase tracking-wider text-black transition hover:bg-black hover:text-white"
