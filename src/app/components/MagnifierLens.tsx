@@ -34,6 +34,7 @@ export default function MagnifierLens({
   desktopPortal = false,
 }: MagnifierLensProps) {
   const [hovering, setHovering] = useState(false);
+  const wrapperRef = useRef<HTMLDivElement>(null);
   const [position, setPosition] = useState<Point>({ x: 0, y: 0 });
   const [desktopLensPosition, setDesktopLensPosition] =
   useState<DesktopLensPosition | null>(null);
@@ -206,6 +207,7 @@ function handlePointerMove(e: PointerEvent<HTMLDivElement>) {
 
   return (
     <div
+    ref={wrapperRef}
       className={`relative h-full w-full overflow-visible ${
         touchZoom.active ? "touch-none" : "touch-pan-y"
       }`}
@@ -214,9 +216,6 @@ function handlePointerMove(e: PointerEvent<HTMLDivElement>) {
       onPointerUp={handlePointerUp}
       onPointerEnter={handlePointerEnter}
       onPointerMove={handlePointerMove}
-      onPointerLeave={(e) => {
-        if (e.pointerType === "mouse") setHovering(false);
-      }}
       onClickCapture={handleClickCapture}
     >
       {children}
