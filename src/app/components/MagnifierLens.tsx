@@ -19,7 +19,7 @@ type Point = {
 export default function MagnifierLens({
   children,
   zoomFactor = 2,
-  lensSize = 170,
+  lensSize = 180,
 }: MagnifierLensProps) {
   const [hovering, setHovering] = useState(false);
   const [position, setPosition] = useState<Point>({ x: 0, y: 0 });
@@ -31,189 +31,182 @@ export default function MagnifierLens({
     y: 0,
   });
 
-  const pointers = useRef(new Map<number, Point>());
-  const pinchStart = useRef<{
-    distance: number;
-    scale: number;
+  const lastTap = useRef(0);
+  const touchInteraction = useRef(false);
+
+  const panStart = useRef<{
+    pointerX: number;
+    pointerY: number;
+    originX: number;
+    originY: number;
   } | null>(null);
 
-  const gesture = useRef({
-    pinched: false,
-    moved: false,
-    startX: 0,
-    startY: 0,
-  });
-
-  const touchInteraction = useRef(false);
-  const lastTap = useRef(0);
-
-  function handlePointerDown(e: PointerEvent<HTMLDivElement>) {
-    if (e.pointerType !== "touch") return;
-
-    touchInteraction.current = true;
-
-    const rect = e.currentTarget.getBoundingClientRect();
-    const point = {
-      x: e.clientX - rect.left,
-      y: e.clientY - rect.top,
-    };
-
-    pointers.current.set(e.pointerId, point);
-
-    if (pointers.current.size === 1) {
-      gesture.current = {
-        pinched: false,
-        moved: false,
-        startX: point.x,
-        startY: point.y,
-      };
-    }
-
-    if (pointers.current.size === 2) {
-      gesture.current.pinched = true;
-
-      const [a, b] = Array.from(pointers.current.values());
-      const distance = Math.hypot(a.x - b.x, a.y - b.y);
-
-      pinchStart.current = {
-        distance: Math.max(distance, 1),
-        scale: touchZoom.active ? touchZoom.scale : zoomFactor,
-      };
-
-      setTouchZoom({
-        active: true,
-        scale: pinchStart.current.scale,
-        x: (a.x + b.x) / 2,
-        y: (a.y + b.y) / 2,
-      });
-    }
-  }
-
-  function handlePointerMove(e: PointerEvent<HTMLDivElement>) {
+  function getPoint(e: PointerEvent<HTMLDivElement>) {
     const rect = e.currentTarget.getBoundingClientRect();
 
-    const point = {
+    return {
       x: Math.max(0, Math.min(e.clientX - rect.left, rect.width)),
       y: Math.max(0, Math.min(e.clientY - rect.top, rect.height)),
     };
+  }
 
-    if (e.pointerType === "touch") {
-      if (!pointers.current.has(e.pointerId)) return;
+  function handlePointerEnter(e: PointerEvent<HTMLDivElement>) {
+    if (e.pointerType !== "mouse") return;
 
-      pointers.current.set(e.pointerId, point);
+    setPosition(getPoint(e));
+    setHovering(true);
+  }
 
-      if (pointers.current.size === 1) {
-        const dx = point.x - gesture.current.startX;
-        const dy = point.y - gesture.current.startY;
+  function handlePointerMove(e: PointerEvent<HTMLDivElement>) {
+    if (e.pointerType === "mouse") {
+      setPosition(getPoint(e));
+    }
+  }
 
-        if (Math.hypot(dx, dy) > 8) {
-          gesture.current.moved = true;
-        }
+  function handlePointerDownCapture(e: PointerEvent<HTMLDivElement>) {
+    if (e.pointerType !== "touch" || !touchZoom.active) return;
 
-        return;
-      }
+    e.stopPropagation();
+    touchInteraction.current = true;
 
-      if (pointers.current.size >= 2 && pinchStart.current) {
-        const [a, b] = Array.from(pointers.current.values());
+    const point = getPoint(e);
 
-        const distance = Math.hypot(a.x - b.x, a.y - b.y);
-        const scale = Math.min(
-          4,
-          Math.max(
-            1.2,
-            pinchStart.current.scale *
-              (distance / pinchStart.current.distance)
-          )
-        );
+    panStart.current = {
+      pointerX: e.clientX,
+      pointerY: e.clientY,
+      originX: touchZoom.x,
+      originY: touchZoom.y,
+    };
 
-        setTouchZoom({
-          active: true,
-          scale,
-          x: (a.x + b.x) / 2,
-          y: (a.y + b.y) / 2,
-        });
-      }
+    e.currentTarget.setPointerCapture(e.pointerId);
+  }
 
+  function handlePointerMoveCapture(e: PointerEvent<HTMLDivElement>) {
+    if (e.pointerType !== "touch" || !touchZoom.active || !panStart.current) {
       return;
     }
 
-    setPosition(point);
+    e.stopPropagation();
+
+    const start = panStart.current;
+    const point = getPoint(e);
+
+    setTouchZoom((current) => ({
+      ...current,
+      x: Math.max(
+        -current.scale * 100,
+        Math.min(
+          point.x,
+          start.originX - (e.clientX - start.pointerX)
+        )
+      ),
+      y: Math.max(
+        -current.scale * 100,
+        Math.min(
+          point.y,
+          start.originY - (e.clientY - start.pointerY)
+        )
+      ),
+    }));
   }
 
   function handlePointerUp(e: PointerEvent<HTMLDivElement>) {
     if (e.pointerType !== "touch") return;
 
-    pointers.current.delete(e.pointerId);
+    if (touchZoom.active) {
+      panStart.current = null;
+      return;
+    }
 
-    if (pointers.current.size === 0) {
-        if (!gesture.current.pinched && !gesture.current.moved) {
-        const now = Date.now();
+    const now = Date.now();
 
-        if (now - lastTap.current < 300) {
-            setTouchZoom((current) => ({
-            ...current,
-            active: !current.active,
-            scale: zoomFactor,
-            }));
+    if (now - lastTap.current < 350) {
+      const point = getPoint(e);
 
-            lastTap.current = 0;
-        } else {
-            lastTap.current = now;
-        }
-        }
+      setTouchZoom({
+        active: true,
+        scale: zoomFactor,
+        x: point.x,
+        y: point.y,
+      });
 
-      pinchStart.current = null;
+      lastTap.current = 0;
+    } else {
+      lastTap.current = now;
     }
   }
 
-  function handlePointerCancel(e: PointerEvent<HTMLDivElement>) {
-    pointers.current.delete(e.pointerId);
+  function handleClickCapture(e: React.MouseEvent<HTMLDivElement>) {
+    if (!touchInteraction.current) return;
 
-    if (pointers.current.size < 2) {
-      pinchStart.current = null;
+    e.preventDefault();
+    e.stopPropagation();
+    touchInteraction.current = false;
+  }
+
+  function handleZoomTouchEnd(e: PointerEvent<HTMLDivElement>) {
+    if (e.pointerType !== "touch" || !touchZoom.active) return;
+
+    e.stopPropagation();
+
+    const now = Date.now();
+
+    if (now - lastTap.current < 350) {
+      setTouchZoom((current) => ({
+        ...current,
+        active: false,
+      }));
+      panStart.current = null;
+      lastTap.current = 0;
+    } else {
+      lastTap.current = now;
     }
   }
 
   return (
     <div
-      className="relative h-full w-full overflow-visible touch-pan-y"
-      onPointerDown={handlePointerDown}
-      onPointerMove={handlePointerMove}
+      className={`relative h-full w-full overflow-visible ${
+        touchZoom.active ? "touch-none" : "touch-pan-y"
+      }`}
+      onPointerDownCapture={handlePointerDownCapture}
+      onPointerMoveCapture={handlePointerMoveCapture}
       onPointerUp={handlePointerUp}
-      onPointerCancel={handlePointerCancel}
-      onPointerEnter={(e) => {
-        if (e.pointerType === "mouse") setHovering(true);
-      }}
+      onPointerEnter={handlePointerEnter}
+      onPointerMove={handlePointerMove}
       onPointerLeave={(e) => {
         if (e.pointerType === "mouse") setHovering(false);
       }}
-      onClickCapture={(e) => {
-        if (touchInteraction.current) {
-          e.preventDefault();
-          e.stopPropagation();
-          touchInteraction.current = false;
-        }
-      }}
+      onClickCapture={handleClickCapture}
     >
       {children}
 
-      {/* Zoom circular para computador */}
+      {/* Lupa circular para computador */}
       <AnimatePresence>
         {hovering && (
           <>
             <motion.div
-              initial={{ opacity: 0, scale: 0.9 }}
+              initial={{ opacity: 0, scale: 0.96 }}
               animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.9 }}
-              transition={{ duration: 0.18 }}
-              className="pointer-events-none absolute inset-0 z-40 overflow-hidden"
+              exit={{ opacity: 0, scale: 0.96 }}
+              transition={{ duration: 0.15 }}
+              className="pointer-events-none absolute z-40 overflow-visible"
               style={{
-                clipPath: `circle(${lensSize / 2}px at ${position.x}px ${position.y}px)`,
+                left: -(lensSize / 2),
+                top: -(lensSize / 2),
+                width: `calc(100% + ${lensSize}px)`,
+                height: `calc(100% + ${lensSize}px)`,
+                clipPath: `circle(${lensSize / 2}px at ${
+                  position.x + lensSize / 2
+                }px ${position.y + lensSize / 2}px)`,
               }}
             >
               <div
-                className="absolute inset-0"
+                className="absolute"
                 style={{
+                  left: lensSize / 2,
+                  top: lensSize / 2,
+                  width: "100%",
+                  height: "100%",
                   transform: `scale(${zoomFactor})`,
                   transformOrigin: `${position.x}px ${position.y}px`,
                 }}
@@ -223,11 +216,11 @@ export default function MagnifierLens({
             </motion.div>
 
             <motion.div
-              className="pointer-events-none absolute z-50 rounded-full border border-white/50"
               initial={{ opacity: 0, scale: 0.8 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.8 }}
-              transition={{ duration: 0.18 }}
+              transition={{ duration: 0.15 }}
+              className="pointer-events-none absolute z-50 rounded-full border-2 border-white/70"
               style={{
                 left: position.x - lensSize / 2,
                 top: position.y - lensSize / 2,
@@ -240,7 +233,7 @@ export default function MagnifierLens({
         )}
       </AnimatePresence>
 
-      {/* Pinch to Zoom para celular */}
+      {/* Zoom para celular */}
       <AnimatePresence>
         {touchZoom.active && (
           <motion.div
@@ -264,7 +257,7 @@ export default function MagnifierLens({
 
       {touchZoom.active && (
         <div className="pointer-events-none absolute bottom-2 left-1/2 z-50 -translate-x-1/2 rounded-full bg-black/75 px-3 py-1 text-[10px] text-white">
-          Toque para fechar o zoom
+          Dois toques para fechar · Arraste para mover
         </div>
       )}
     </div>
