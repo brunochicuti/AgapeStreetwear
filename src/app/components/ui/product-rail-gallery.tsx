@@ -1061,7 +1061,7 @@ export function ClothingRailHero({
                             {item.image
                             ? <Photo src={side === "back" ? (item.backImage ?? item.image) : item.image} alt="" full={hanger === "none"} />
                             : <Fabric uid={uid} kind={kind} side={side} color={color} trim={trim} />}
-                            <span ref={side === "front" ? (node) => { shadeRef.current[garmentIndex] = node; } : undefined} className={`pointer-events-none absolute bg-black ${item.image ? pBox : "inset-0"}`} style={{ opacity: "var(--shade, 0.2)", WebkitMask: `${item.image ? `url("${(side === "back" ? item.backImage : undefined) ?? item.image}")` : silhouetteMask(kind, side)} top center / contain no-repeat`, mask: `${item.image ? `url("${(side === "back" ? item.backImage : undefined) ?? item.image}")` : silhouetteMask(kind, side)} top center / contain no-repeat` }} />
+                            <span ref={side === "front" ? (node) => { shadeRef.current[garmentIndex] = node; } : undefined} className={`pointer-events-none absolute bg-black ${item.image ? pBox : "inset-0"}`} style={{ opacity: 0, WebkitMask: `${item.image ? `url("${(side === "back" ? item.backImage : undefined) ?? item.image}")` : silhouetteMask(kind, side)} top center / contain no-repeat`, mask: `${item.image ? `url("${(side === "back" ? item.backImage : undefined) ?? item.image}")` : silhouetteMask(kind, side)} top center / contain no-repeat` }} />
                         </span>
                         {/* 3. Gancho metálico no topo (sai por cima de tudo) */}
                         <HangerHook uid={uid} material={hanger} />
@@ -1154,6 +1154,7 @@ function Detail({ uid, item, index, total, hanger, labels, reduced, source, onLi
   const closeRef = React.useRef(null as HTMLButtonElement | null);
   const [side, setSide] = React.useState("front" as "front" | "back");
   const [shown, setShown] = React.useState(false);
+  const [zoomed, setZoomed] = React.useState(false);
   const [quantity, setQuantity] = React.useState(1);
   const [selectedSize, setSelectedSize] = React.useState<string | null>(null);
   // Limite de estoque (vem do metadata "estoque" da Stripe). Sem estoque definido, não limita.
@@ -1305,7 +1306,13 @@ const comprarAgora = () => {
   };
 
  const stage = (
-    <div ref={figureRef} className="relative mx-auto aspect-[200/310] h-[min(62vh,560px)] max-h-full origin-top">
+    <div
+      ref={figureRef}
+      className={`relative mx-auto aspect-[200/310] h-[min(62vh,560px)] max-h-full origin-top transition-transform duration-300 ${
+        zoomed ? "scale-150 cursor-zoom-out" : "scale-100 cursor-zoom-in"
+      }`}
+      onDoubleClick={() => setZoomed((value) => !value)}
+    >
       <div aria-hidden="true" className="absolute left-1/2 top-[-40vh] h-[40vh] w-[3px] -translate-x-1/2 rounded-full" style={{ background: "linear-gradient(to right, color-mix(in oklab, var(--color-muted-foreground) 50%, white), var(--color-muted-foreground), color-mix(in oklab, var(--color-muted-foreground) 50%, black))", top: `calc(-40vh + ${(HOOK_TOP / VB_H) * 100}%)` }} />
       <div
         className="absolute inset-0 cursor-grab touch-pan-y active:cursor-grabbing"
@@ -1377,8 +1384,8 @@ const comprarAgora = () => {
                   aria-pressed={selectedSize === size}
                   className={`flex h-11 w-11 items-center justify-center rounded-md border text-sm font-semibold transition ${
                     selectedSize === size
-                      ? "border-foreground bg-foreground text-background"
-                      : "border-border text-foreground hover:border-foreground"
+                      ? "border-black bg-black text-white"
+                      : "border-neutral-400 text-foreground hover:border-black"
                   }`}
                 >
                   {size}
