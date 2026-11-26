@@ -5,8 +5,6 @@ import prisma from "@/src/lib/prisma";
 import { verificarAdmin } from "@/src/lib/admin";
 import type { UploadApiResponse } from "cloudinary";
 
-export const runtime = "nodejs";
-
 const ANGULOS = ["FRENTE", "LADO", "COSTAS"] as const;
 const TIPOS_PERMITIDOS = ["image/jpeg", "image/png", "image/webp"];
 const TAMANHO_MAXIMO = 5 * 1024 * 1024;
