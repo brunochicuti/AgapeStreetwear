@@ -47,7 +47,7 @@ return (
       <ClothingRailHero
         items={items}
         hanger="none"
-        eyebrow="Loja Ágape"
+        eyebrow="Agape Streetwear"
         heading="Arara de Produtos"
         caption="Passe o cursor e clique na peça para ver os detalhes e as diferentes vistas."
         autoplay={autoplay}

@@ -1105,7 +1105,7 @@ export function ClothingRailHero({
                 <>
                 <span className="hidden sm:inline">{caption}</span>
                 <span className="sm:hidden">
-                    Toque na peça para ver os detalhes e as diferentes vistas.
+                    ← Deslize para o lado para explorar outros modelos →
                 </span>
                 </>
             )}
