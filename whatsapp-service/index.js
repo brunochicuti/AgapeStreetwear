@@ -382,16 +382,20 @@ app.post("/internal/send-order", autenticar, async (req, res) => {
     });
   }
 
-  const itensValidos = items.every(
-    (item) =>
-      item &&
-      typeof item.name === "string" &&
-      item.name.trim().length > 0 &&
-      item.name.length <= 150 &&
-      Number.isInteger(item.quantity) &&
-      item.quantity > 0 &&
-      item.quantity <= 100
-  );
+const itensValidos = items.every(
+  (item) =>
+    item &&
+    typeof item.name === "string" &&
+    item.name.trim().length > 0 &&
+    item.name.length <= 150 &&
+    (item.color == null ||
+      (typeof item.color === "string" && item.color.length <= 100)) &&
+    (item.size == null ||
+      (typeof item.size === "string" && item.size.length <= 50)) &&
+    Number.isInteger(item.quantity) &&
+    item.quantity > 0 &&
+    item.quantity <= 100
+);
 
   if (!itensValidos) {
     return res.status(400).json({
@@ -475,9 +479,19 @@ if (registro?.status === "sent") {
     currency: "BRL",
   });
 
-  const listaItens = items
-    .map((item) => `• ${item.name.trim()} — ${item.quantity} un.`)
-    .join("\n");
+const listaItens = items
+  .map((item) => {
+    const detalhes = [
+      item.color ? `Cor: ${item.color.trim()}` : null,
+      item.size ? `Tamanho: ${item.size.trim()}` : null,
+    ].filter(Boolean);
+
+    return [
+      `• ${item.name.trim()} — ${item.quantity} un.`,
+      ...detalhes.map((detalhe) => `  ${detalhe}`),
+    ].join("\n");
+  })
+  .join("\n");
 
   const mensagem = [
     "AGAPE STREETWEAR — NOVO PEDIDO PAGO",

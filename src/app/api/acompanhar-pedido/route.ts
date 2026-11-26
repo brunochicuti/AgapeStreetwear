@@ -46,6 +46,7 @@ export async function GET(request: Request) {
     const pedido = await prisma.order.findUnique({
       where: {
         trackingTokenHash: tokenHash,
+        status: "paid",
       },
       select: {
         id: true,
@@ -63,6 +64,8 @@ export async function GET(request: Request) {
             quantity: true,
             unitPrice: true,
             image: true,
+            color: true,
+            size: true,
           },
         },
           statusHistory: {
@@ -106,6 +109,8 @@ export async function GET(request: Request) {
             quantity: item.quantity,
             price: item.unitPrice,
             image: item.image,
+            color: item.color,
+            size: item.size,
           })),
             statusHistory: pedido.statusHistory,
         },

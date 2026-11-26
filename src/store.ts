@@ -1,4 +1,3 @@
-
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { ProductType } from "@/src/types/ProductType";
@@ -25,20 +24,32 @@ export const useCartStore = create<CartState>()(
         (set) => ({
             cart: [],
 
-            addProduct: (item, quantity =1) =>
+            addProduct: (item, quantity = 1) =>
                 set((state) => {
-                    const quantidadeAdicionar = Math.max(1, Math.floor(quantity));
+                    const quantidadeAdicionar = Math.max(
+                        1,
+                        Math.floor(quantity)
+                    );
 
                     const product = state.cart.find(
-                        (p) => p.id === item.id
+                        (p) =>
+                            p.id === item.id &&
+                            p.color === item.color &&
+                            p.size === item.size
                     );
 
                     if (product) {
                         const updatedCart = state.cart.map((p) => {
-                            if (p.id === item.id) {
+                            if (
+                                p.id === item.id &&
+                                p.color === item.color &&
+                                p.size === item.size
+                            ) {
                                 return {
                                     ...p,
-                                    quantity: (p.quantity ?? 1) + quantidadeAdicionar,
+                                    quantity:
+                                        (p.quantity ?? 1) +
+                                        quantidadeAdicionar,
                                 };
                             }
 
@@ -54,7 +65,10 @@ export const useCartStore = create<CartState>()(
                     return {
                         cart: [
                             ...state.cart,
-                            { ...item, quantity: quantidadeAdicionar },
+                            {
+                                ...item,
+                                quantity: quantidadeAdicionar,
+                            },
                         ],
                         paymentIntent: "",
                     };
@@ -62,37 +76,32 @@ export const useCartStore = create<CartState>()(
 
             removeProduct: (item) =>
                 set((state) => {
-                    const existingProduct = state.cart.find(
-                        (p) => p.id === item.id
-                    );
+                    const updatedCart = state.cart
+                        .map((p) => {
+                            if (
+                                p.id === item.id &&
+                                p.color === item.color &&
+                                p.size === item.size
+                            ) {
+                                const novaQuantidade =
+                                    (p.quantity ?? 1) - 1;
 
-                    if (
-                        existingProduct &&
-                        existingProduct.quantity! > 1
-                    ) {
-                        const updatedCart = state.cart.map((p) => {
-                            if (p.id === item.id) {
-                                return {
-                                    ...p,
-                                    quantity: p.quantity! - 1,
-                                };
+                                return novaQuantidade > 0
+                                    ? {
+                                          ...p,
+                                          quantity: novaQuantidade,
+                                      }
+                                    : null;
                             }
 
                             return p;
-                        });
-
-                        return {
-                            cart: updatedCart,
-                            paymentIntent: "",
-                        };
-                    }
-
-                    const filteredCart = state.cart.filter(
-                        (p) => p.id !== item.id
-                    );
+                        })
+                        .filter(
+                            (p): p is ProductType => p !== null
+                        );
 
                     return {
-                        cart: filteredCart,
+                        cart: updatedCart,
                         paymentIntent: "",
                     };
                 }),

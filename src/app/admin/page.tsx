@@ -9,6 +9,8 @@ type Produto = {
   quantity: number;
   unitPrice: number;
   image: string | null;
+  color: string | null;
+  size: string | null;
 };
 
 type EventoStatus = {
@@ -716,9 +718,25 @@ export default function AdminPage() {
                           key={item.id}
                           className="flex justify-between gap-4 text-sm"
                         >
-                          <span>
-                            {item.name} × {item.quantity}
-                          </span>
+                    <div>
+                      <p className="font-medium">{item.name}</p>
+
+                      {item.color && (
+                        <p className="mt-1 text-xs text-neutral-400">
+                          Cor: {item.color}
+                        </p>
+                      )}
+
+                      {item.size && (
+                        <p className="mt-1 text-xs text-neutral-400">
+                          Tamanho: {item.size}
+                        </p>
+                      )}
+
+                      <p className="mt-1 text-xs text-neutral-400">
+                        Quantidade: {item.quantity}
+                      </p>
+                    </div>
                           <span className="whitespace-nowrap">
                             {preco(
                               (item.unitPrice * item.quantity) / 100,

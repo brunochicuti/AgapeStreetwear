@@ -1155,6 +1155,7 @@ function Detail({ uid, item, index, total, hanger, labels, reduced, source, onLi
   const [side, setSide] = React.useState("front" as "front" | "back");
   const [shown, setShown] = React.useState(false);
   const [quantity, setQuantity] = React.useState(1);
+  const [selectedSize, setSelectedSize] = React.useState<string | null>(null);
   // Limite de estoque (vem do metadata "estoque" da Stripe). Sem estoque definido, não limita.
   const estoque = item.product?.estoque ?? null;
   const maxQtd = estoque === null ? Infinity : Math.max(0, estoque);
@@ -1172,16 +1173,34 @@ function Detail({ uid, item, index, total, hanger, labels, reduced, source, onLi
   const addProduct = useCartStore((state) => state.addProduct);
 
 const adicionarAoCarrinho = () => {
-  if (!item.product || item.product.price === null || semEstoque) return;
+  if (
+    !item.product ||
+    item.product.price === null ||
+    semEstoque ||
+    !selectedSize
+  ) return;
 
-  addProduct(item.product, Math.min(quantity, maxQtd));
+  addProduct(
+    { ...item.product, size: selectedSize },
+    Math.min(quantity, maxQtd)
+  );
+
   useCartStore.setState({ isOpen: true });
 };
 
 const comprarAgora = () => {
-  if (!isLoaded || !item.product || item.product.price === null || semEstoque) return;
+  if (
+    !isLoaded ||
+    !item.product ||
+    item.product.price === null ||
+    semEstoque ||
+    !selectedSize
+  ) return;
 
-  addProduct(item.product, Math.min(quantity, maxQtd));
+  addProduct(
+    { ...item.product, size: selectedSize },
+    Math.min(quantity, maxQtd)
+  );
 
   if (!user) {
     router.push("/sign-in?redirectUrl=/checkout");
@@ -1342,6 +1361,36 @@ const comprarAgora = () => {
                 <span aria-hidden="true" className={`absolute inset-x-0 bottom-0 h-px origin-left bg-foreground transition-transform duration-300 motion-reduce:transition-none ${side === face ? "scale-x-100" : "scale-x-0"}`} />
               </button>
             ))}
+          </div>
+
+          <div className="flex flex-col items-center gap-2 md:items-start">
+            <span className="text-sm font-medium text-foreground">
+              Selecione seu tamanho
+            </span>
+
+            <div className="flex gap-3">
+              {(["P", "M", "G"] as const).map((size) => (
+                <button
+                  key={size}
+                  type="button"
+                  onClick={() => setSelectedSize(size)}
+                  aria-pressed={selectedSize === size}
+                  className={`flex h-11 w-11 items-center justify-center rounded-md border text-sm font-semibold transition ${
+                    selectedSize === size
+                      ? "border-foreground bg-foreground text-background"
+                      : "border-border text-foreground hover:border-foreground"
+                  }`}
+                >
+                  {size}
+                </button>
+              ))}
+            </div>
+
+            {!selectedSize && (
+              <p className="text-xs text-muted-foreground">
+                Escolha um tamanho para continuar.
+              </p>
+            )}
           </div>
 
             <div className="mt-6 flex flex-col gap-5">

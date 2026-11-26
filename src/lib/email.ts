@@ -20,10 +20,11 @@ export async function enviarEmail({
   const { data, error } = await resend.emails.send({
     from: "Agape Streetwear <contato@agapestreetwear.com.br>",
     to: para,
+    replyTo: "suporte@in.agapestreetwear.com.br",
     subject: assunto,
     html,
   });
-
+  
   if (error) {
     throw new Error(`Falha ao enviar e-mail: ${error.message}`);
   }

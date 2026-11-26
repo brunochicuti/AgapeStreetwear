@@ -121,7 +121,7 @@ const subtotal = cart.reduce(
               <div className="divide-y divide-[#e8e5df]">
                 {cart.map((item) => (
                   <article
-                    key={item.id}
+                   key={`${item.id}-${item.color ?? ""}-${item.size ?? ""}`}
                     className="flex gap-4 py-5 first:pt-0"
                   >
                     {/* Imagem */}
@@ -140,6 +140,11 @@ const subtotal = cart.reduce(
                       <div className="flex items-start justify-between gap-2">
                         <h3 className="line-clamp-2 text-sm font-medium leading-5 sm:text-[15px]">
                           {item.name}
+                          {item.size && (
+                            <p className="mt-1 text-xs text-[#716c62]">
+                              Tamanho: {item.size}
+                            </p>
+                          )}
                         </h3>
 
                         <button

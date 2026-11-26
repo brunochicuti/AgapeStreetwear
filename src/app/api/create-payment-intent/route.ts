@@ -10,6 +10,8 @@ const FRETE_CENTAVOS = 500;
 
 type ItemCarrinho = {
   id: string;
+  color?: string | null;
+  size: string;
   quantity: number;
 };
 
@@ -315,7 +317,14 @@ export async function POST(req: Request) {
           !/^prod_[a-zA-Z0-9]{1,100}$/.test(item.id) ||
           !Number.isInteger(item.quantity) ||
           item.quantity <= 0 ||
-          item.quantity > 100
+          item.quantity > 100 ||
+          typeof item.size !== "string" ||
+          !["P", "M", "G"].includes(item.size) ||
+          (item.color !== undefined &&
+            item.color !== null &&
+            (typeof item.color !== "string" ||
+              !item.color.trim() ||
+              item.color.length > 60))
       )
     ) {
       return erroJson("Itens do pedido inválidos.", 400);
@@ -341,19 +350,37 @@ export async function POST(req: Request) {
       return erroJson(erroCep, 400);
     }
 
-    const quantidades = new Map<string, number>();
+    const variacoes = new Map<
+      string,
+      {
+        productId: string;
+        color: string | null;
+        size: string;
+        quantity: number;
+      }
+    >();
 
     for (const item of items) {
-      const quantidade = (quantidades.get(item.id) || 0) + item.quantity;
+      const color = item.color?.trim() || null;
+      const size = item.size;
+      const chave = JSON.stringify([item.id, color, size]);
+
+      const quantidade =
+        (variacoes.get(chave)?.quantity ?? 0) + item.quantity;
 
       if (quantidade > 100) {
         return erroJson(
-          "A quantidade máxima por produto é 100 unidades.",
+          "A quantidade máxima por variação é 100 unidades.",
           400
         );
       }
 
-      quantidades.set(item.id, quantidade);
+      variacoes.set(chave, {
+        productId: item.id,
+        color,
+        size,
+        quantity: quantidade,
+      });
     }
 
     const user = await prisma.user.findUnique({
@@ -386,8 +413,8 @@ export async function POST(req: Request) {
     };
 
     const productData = await Promise.all(
-      Array.from(quantidades.entries()).map(
-        async ([productId, quantity]) => {
+        Array.from(variacoes.values()).map(
+          async ({ productId, color, size, quantity }) => {
           const product = await stripe.products.retrieve(productId);
 
           if (product.deleted || !product.active) {
@@ -429,6 +456,8 @@ export async function POST(req: Request) {
           quantity,
           unitPrice: price.unit_amount,
           image: product.images[0] || null,
+          color,
+          size,
         };
         }
       )
@@ -467,6 +496,8 @@ export async function POST(req: Request) {
           name: true,
           quantity: true,
           unitPrice: true,
+          color: true,
+          size: true,
         },
       },
     },
@@ -478,8 +509,12 @@ const produtosIguais =
   productData.every((novoProduto) => {
     const produtoExistente = checkoutExistente.items.find((produto) =>
       produto.stripeProductId
-        ? produto.stripeProductId === novoProduto.stripeProductId
-        : produto.name === novoProduto.name
+        ? produto.stripeProductId === novoProduto.stripeProductId &&
+          produto.color === novoProduto.color &&
+          produto.size === novoProduto.size
+        : produto.name === novoProduto.name &&
+          produto.color === novoProduto.color &&
+          produto.size === novoProduto.size
     );
 
     return (

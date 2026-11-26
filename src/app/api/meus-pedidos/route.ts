@@ -26,7 +26,10 @@ export async function GET() {
     }
 
     const orders = await prisma.order.findMany({
-      where: { userId: user.id },
+      where: {
+        userId: user.id,
+        status: "paid",
+      },
       orderBy: { createdDate: "desc" },
       select: {
         id: true,
@@ -44,6 +47,8 @@ export async function GET() {
             quantity: true,
             unitPrice: true,
             image: true,
+            color: true,
+            size: true,
           },
         },
         statusHistory: {
@@ -53,15 +58,42 @@ export async function GET() {
           select: {
             fromStatus: true,
             toStatus: true,
+            source: true,
             createdAt: true,
           },
         },
       },
     });
 
+    const agora = Date.now();
+    const seteDiasEmMs = 7 * 24 * 60 * 60 * 1000;
+
+    const pedidosVisiveis = orders.filter((order) => {
+      if (order.fulfillmentStatus !== "delivered") {
+        return true;
+      }
+
+      const registroEntrega = [...order.statusHistory]
+        .reverse()
+        .find(
+          (evento) =>
+            evento.toStatus === "delivered" &&
+            evento.source === "admin"
+        );
+
+      if (!registroEntrega) {
+        return false;
+      }
+
+      const tempoDesdeEntrega =
+        agora - new Date(registroEntrega.createdAt).getTime();
+
+      return tempoDesdeEntrega < seteDiasEmMs;
+    });
+
     return Response.json(
       {
-        orders: orders.map((order) => ({
+        orders: pedidosVisiveis.map((order) => ({
         id: order.id,
         status: order.status,
         fulfillmentStatus: order.fulfillmentStatus,
@@ -73,6 +105,7 @@ export async function GET() {
         statusHistory: order.statusHistory.map((history) => ({
           fromStatus: history.fromStatus,
           toStatus: history.toStatus,
+          source: history.source,
           createdAt: history.createdAt,
         })),
         products: order.items.map((item) => ({
@@ -81,6 +114,8 @@ export async function GET() {
             quantity: item.quantity,
             price: item.unitPrice,
             image: item.image,
+            color: item.color,
+            size: item.size,
         })),
         })),
       },

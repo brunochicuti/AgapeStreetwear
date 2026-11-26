@@ -6,6 +6,7 @@ import {
   processarNotificacaoEmail,
   type EventoEmail,
 } from "@/src/lib/notificacoes-email";
+import { stripe } from "@/src/lib/stripe";
 
 export const maxDuration = 60;
 
@@ -14,6 +15,7 @@ const eventosPermitidos: EventoEmail[] = [
   "payment_approved",
   "order_shipped",
   "order_delivered",
+  "payment_reminder",
 ];
 
 function autorizarCron(request: Request) {
@@ -40,18 +42,132 @@ export async function GET(request: Request) {
   }
 
   try {
-    const limite = new Date(Date.now() - 15 * 60 * 1000);
+ const agora = new Date();
+
+const limiteOutros = new Date(
+  agora.getTime() - 60 * 60 * 1000
+);
+
+// Cartão e pedidos sem método selecionado: 60 minutos.
+const pedidosOutros = await prisma.order.findMany({
+  where: {
+    status: { in: ["pending", "failed"] },
+    paymentReminderSentAt: null,
+    paymentIntentID: { not: null },
+    email: { not: "" },
+    OR: [
+  { paymentMethod: "card" },
+  { paymentMethod: null },
+],
+    createdDate: { lte: limiteOutros },
+  },
+  select: {
+    id: true,
+  },
+  take: 100,
+  orderBy: { createdDate: "asc" },
+});
+
+// Pix: consultar o vencimento diretamente na Stripe.
+const pedidosPix = await prisma.order.findMany({
+  where: {
+    status: { in: ["pending", "failed"] },
+    paymentReminderSentAt: null,
+    paymentIntentID: { not: null },
+    email: { not: "" },
+    paymentMethod: "pix",
+  },
+  select: {
+    id: true,
+    amount: true,
+    paymentIntentID: true,
+    createdDate: true,
+  },
+  take: 10,
+  orderBy: { createdDate: "asc" },
+});
+
+const pedidosPixElegiveis: { id: string }[] = [];
+
+for (const pedido of pedidosPix) {
+  try {
+    const pagamento = await stripe.paymentIntents.retrieve(
+      pedido.paymentIntentID!
+    );
+
+    if (
+      pagamento.amount !== Math.round(pedido.amount * 100) ||
+      pagamento.currency.toLowerCase() !== "brl" ||
+      pagamento.metadata.orderId !== pedido.id
+    ) {
+      continue;
+    }
+
+    let horarioLembrete: number;
+
+    if (pagamento.status === "requires_payment_method") {
+      horarioLembrete =
+        pedido.createdDate.getTime() + 30 * 60 * 1000;
+    } else if (
+      pagamento.status === "requires_action" &&
+      pagamento.next_action?.pix_display_qr_code?.expires_at
+    ) {
+      const expiraEm =
+        pagamento.next_action.pix_display_qr_code.expires_at * 1000;
+
+    horarioLembrete = Math.min(
+      pedido.createdDate.getTime() + 30 * 60 * 1000,
+      expiraEm - 15 * 60 * 1000
+    );
+
+    if (agora.getTime() >= expiraEm - 10 * 60 * 1000) {
+      continue;
+    }
+    } else {
+      continue;
+    }
+
+    if (agora.getTime() >= horarioLembrete) {
+      pedidosPixElegiveis.push({ id: pedido.id });
+    }
+  } catch (error) {
+    console.error(
+      "Erro ao verificar pagamento Pix:",
+      pedido.id,
+      error
+    );
+  }
+}
+
+const pedidosVencidos = [
+  ...pedidosOutros,
+  ...pedidosPixElegiveis,
+];
+
+const lembretesRegistrados =
+  await prisma.emailNotification.createMany({
+    data: pedidosVencidos.map((pedido) => ({
+      orderId: pedido.id,
+      eventType: "payment_reminder",
+      status: "pending",
+    })),
+    skipDuplicates: true,
+  });
+
+    const limiteParadas = new Date(
+      agora.getTime() - 15 * 60 * 1000
+    );
 
     const paradas = await prisma.emailNotification.findMany({
       where: {
         status: "processing",
-        updatedAt: { lt: limite },
+        updatedAt: { lt: limiteParadas },
         attempts: { lt: 5 },
       },
       select: {
         id: true,
       },
-      take: 50,
+      take: 10,
       orderBy: { updatedAt: "asc" },
     });
 
@@ -62,12 +178,13 @@ export async function GET(request: Request) {
         where: {
           id: notificacao.id,
           status: "processing",
-          updatedAt: { lt: limite },
+          updatedAt: { lt: limiteParadas },
           attempts: { lt: 5 },
         },
         data: {
           status: "failed",
-          lastError: "Processamento interrompido; tentativa de recuperação.",
+          lastError:
+            "Processamento interrompido; tentativa de recuperação.",
         },
       });
 
@@ -101,6 +218,8 @@ export async function GET(request: Request) {
 
     return NextResponse.json({
       success: true,
+      lembretesEncontrados: pedidosVencidos.length,
+      lembretesRegistrados: lembretesRegistrados.count,
       recuperadas,
       processadas,
     });

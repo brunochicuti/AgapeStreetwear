@@ -25,7 +25,7 @@ export default function Product({ product }: ProductProps) {
       }`}
     >
       <div className="relative max-h-72 flex-1">
-        <ProductImage product={product} fill />
+        <ProductImage product={product} fill enableZoom />
 
         {product.etiqueta && (
           <span

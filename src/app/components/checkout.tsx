@@ -2,7 +2,7 @@
 "use client";
 
 import Image from "next/image";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { loadStripe, StripeElementsOptions } from "@stripe/stripe-js";
 import {
@@ -160,12 +160,20 @@ function IndicadorEtapas({ etapa }: { etapa: Etapa }) {
   );
 }
 
+
 function FormularioPagamento({
   paymentIntentId,
   trackingToken,
+  tokenRecuperacao,
+  onPaymentIntentUpdated,
 }: {
   paymentIntentId: string;
   trackingToken: string;
+  tokenRecuperacao: string;
+  onPaymentIntentUpdated: (data: {
+    paymentIntentId: string;
+    clientSecret: string;
+  }) => void;
 }) {
   const stripe = useStripe();
   const elements = useElements();
@@ -173,35 +181,246 @@ function FormularioPagamento({
 
   const [carregando, setCarregando] = useState(false);
   const [erro, setErro] = useState("");
-  const confirmacaoEmAndamento = useRef(false);
+  const [metodoSelecionado, setMetodoSelecionado] =
+    useState<"pix" | "card" | null>(null);
+  const [metodoSalvo, setMetodoSalvo] =
+    useState<"pix" | "card" | null>(null);
+  const [salvandoMetodo, setSalvandoMetodo] = useState(false);
 
-  async function finalizarPagamento(event: FormEvent<HTMLFormElement>) {
+  const confirmacaoEmAndamento = useRef(false);
+  const metodoAtualRef = useRef<"pix" | "card" | null>(null);
+  const filaAtualizacao = useRef<Promise<void>>(Promise.resolve());
+  const cobrancaSubstituidaRef = useRef(false);
+
+  function registrarMetodo(metodo: "pix" | "card") {
+    metodoAtualRef.current = metodo;
+    setMetodoSelecionado(metodo);
+    setMetodoSalvo(null);
+    setSalvandoMetodo(true);
+    setErro("");
+
+    filaAtualizacao.current = filaAtualizacao.current
+      .catch(() => undefined)
+      .then(async () => {
+        const metodoAtual = metodoAtualRef.current;
+
+        if (!metodoAtual) return;
+
+      const response = await fetch(
+        tokenRecuperacao
+          ? "/api/recuperar-pagamento/metodo"
+          : "/api/registrar-metodo-pagamento",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            paymentIntentId,
+            paymentMethod: metodoAtual,
+            ...(tokenRecuperacao
+              ? { token: tokenRecuperacao }
+              : {}),
+          }),
+        }
+      );
+
+if (!response.ok) {
+  throw new Error("Falha ao registrar o método.");
+}
+
+if (tokenRecuperacao) {
+  const resultado = await response.json();
+
+  if (resultado.replacementRequired === true) {
+    const preparacao = await fetch(
+      "/api/recuperar-pagamento/preparar",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          token: tokenRecuperacao,
+          paymentMethod: metodoAtual,
+        }),
+        cache: "no-store",
+      }
+    );
+
+    const novaCobranca = await preparacao.json();
+
+    if (
+      !preparacao.ok ||
+      novaCobranca.status !== "recoverable" ||
+      typeof novaCobranca.paymentIntentId !== "string" ||
+      typeof novaCobranca.clientSecret !== "string"
+    ) {
+      throw new Error(
+        novaCobranca.error ||
+          "Não foi possível atualizar a cobrança."
+      );
+    }
+
+    cobrancaSubstituidaRef.current = true;
+
+    onPaymentIntentUpdated({
+      paymentIntentId: novaCobranca.paymentIntentId,
+      clientSecret: novaCobranca.clientSecret,
+    });
+
+    onPaymentIntentUpdated({
+      paymentIntentId: novaCobranca.paymentIntentId,
+      clientSecret: novaCobranca.clientSecret,
+    });
+
+    return;
+  }
+}
+
+if (metodoAtualRef.current === metodoAtual) {
+          setMetodoSalvo(metodoAtual);
+          setSalvandoMetodo(false);
+          setErro("");
+        }
+      })
+      .catch(() => {
+        if (metodoAtualRef.current === metodo) {
+          setMetodoSalvo(null);
+          setSalvandoMetodo(false);
+          setErro(
+            "Não foi possível registrar a forma de pagamento. Selecione novamente."
+          );
+        }
+      });
+  }
+
+  async function finalizarPagamento(
+    event: FormEvent<HTMLFormElement>
+  ) {
     event.preventDefault();
 
-    if (!stripe || !elements || confirmacaoEmAndamento.current) return;
+    if (!stripe || !elements || confirmacaoEmAndamento.current) {
+      return;
+    }
+
+    if (!metodoAtualRef.current) {
+      setErro("Selecione uma forma de pagamento.");
+      return;
+    }
 
     confirmacaoEmAndamento.current = true;
     setCarregando(true);
     setErro("");
 
     try {
-      const { error, paymentIntent } = await stripe.confirmPayment({
-        elements,
-        confirmParams: {
-          return_url: `${window.location.origin}/pedido-confirmado?payment_intent_id=${encodeURIComponent(paymentIntentId)}&token=${encodeURIComponent(trackingToken)}`,
+      // Aguarda as atualizações anteriores.
+      await filaAtualizacao.current;
+
+      // Se a cobrança foi substituída, aguarda o novo formulário Stripe.
+      if (cobrancaSubstituidaRef.current) {
+        return;
+      }
+
+      const metodoAtual = metodoAtualRef.current;
+
+      if (!metodoAtual) {
+        throw new Error("Selecione uma forma de pagamento.");
+      }
+
+      // Confirma a escolha mais recente no servidor.
+      const response = await fetch(
+        tokenRecuperacao
+          ? "/api/recuperar-pagamento/metodo"
+          : "/api/registrar-metodo-pagamento",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            paymentIntentId,
+            paymentMethod: metodoAtual,
+            ...(tokenRecuperacao
+              ? { token: tokenRecuperacao }
+              : {}),
+          }),
+        }
+      );
+if (!response.ok) {
+  throw new Error(
+    "Não foi possível confirmar a forma de pagamento. Tente novamente."
+  );
+}
+
+if (tokenRecuperacao) {
+  const resultado = await response.json();
+
+  if (resultado.replacementRequired === true) {
+    const preparacao = await fetch(
+      "/api/recuperar-pagamento/preparar",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
         },
-        redirect: "if_required",
-      });
+        body: JSON.stringify({
+          token: tokenRecuperacao,
+          paymentMethod: metodoAtual,
+        }),
+        cache: "no-store",
+      }
+    );
+
+    const novaCobranca = await preparacao.json();
+
+    if (
+      !preparacao.ok ||
+      novaCobranca.status !== "recoverable" ||
+      typeof novaCobranca.paymentIntentId !== "string" ||
+      typeof novaCobranca.clientSecret !== "string"
+    ) {
+      throw new Error(
+        novaCobranca.error ||
+          "Não foi possível atualizar a cobrança."
+      );
+    }
+
+    cobrancaSubstituidaRef.current = true;
+
+    onPaymentIntentUpdated({
+      paymentIntentId: novaCobranca.paymentIntentId,
+      clientSecret: novaCobranca.clientSecret,
+    });
+
+    return;
+  }
+}
+
+setMetodoSalvo(metodoAtual);
+
+      const { error, paymentIntent } =
+        await stripe.confirmPayment({
+          elements,
+          confirmParams: {
+            return_url: `${window.location.origin}/pedido-confirmado?payment_intent_id=${encodeURIComponent(paymentIntentId)}&token=${encodeURIComponent(trackingToken)}`,
+          },
+          redirect: "if_required",
+        });
 
       if (error) {
         if (error.code === "payment_intent_unexpected_state") {
-        router.push(
-          `/pedido-confirmado?payment_intent_id=${encodeURIComponent(paymentIntentId)}&token=${encodeURIComponent(trackingToken)}`
-        );
+          router.push(
+            `/pedido-confirmado?payment_intent_id=${encodeURIComponent(paymentIntentId)}&token=${encodeURIComponent(trackingToken)}`
+          );
           return;
         }
 
-        setErro(error.message || "Não foi possível concluir o pagamento.");
+        setErro(
+          error.message ||
+            "Não foi possível concluir o pagamento."
+        );
+
         confirmacaoEmAndamento.current = false;
         setCarregando(false);
         return;
@@ -211,20 +430,28 @@ function FormularioPagamento({
         paymentIntent?.status === "succeeded" ||
         paymentIntent?.status === "processing"
       ) {
-      router.push(
-        `/pedido-confirmado?payment_intent_id=${encodeURIComponent(paymentIntent.id)}&token=${encodeURIComponent(trackingToken)}`
-      );
+        router.push(
+          `/pedido-confirmado?payment_intent_id=${encodeURIComponent(paymentIntent.id)}&token=${encodeURIComponent(trackingToken)}`
+        );
         return;
       }
 
-      setErro("O pagamento ainda não foi confirmado. Verifique os dados.");
+      setErro(
+        "O pagamento ainda não foi confirmado. Verifique os dados."
+      );
+
       confirmacaoEmAndamento.current = false;
       setCarregando(false);
-      } catch {
-        setErro("Ocorreu um erro ao processar o pagamento.");
-        confirmacaoEmAndamento.current = false;
-        setCarregando(false);
-      }
+    } catch (error) {
+      setErro(
+        error instanceof Error
+          ? error.message
+          : "Ocorreu um erro ao processar o pagamento."
+      );
+
+      confirmacaoEmAndamento.current = false;
+      setCarregando(false);
+    }
   }
 
   return (
@@ -239,8 +466,23 @@ function FormularioPagamento({
       </div>
 
       <div className="rounded-xl border border-gray-200 p-4">
-        <PaymentElement options={{ layout: "tabs" }} />
+        <PaymentElement
+          options={{ layout: "tabs" }}
+          onChange={(event) => {
+            const tipo = event.value.type;
+
+            if (tipo === "pix" || tipo === "card") {
+              registrarMetodo(tipo);
+            }
+          }}
+        />
       </div>
+
+      {salvandoMetodo && (
+        <p className="text-sm text-gray-500">
+          Registrando forma de pagamento...
+        </p>
+      )}
 
       {erro && (
         <p
@@ -253,10 +495,21 @@ function FormularioPagamento({
 
       <button
         type="submit"
-        disabled={!stripe || !elements || carregando}
+        disabled={
+          !stripe ||
+          !elements ||
+          carregando ||
+          salvandoMetodo ||
+          !metodoSelecionado ||
+          metodoSelecionado !== metodoSalvo
+        }
         className="w-full rounded-lg bg-black px-6 py-4 text-sm font-bold uppercase tracking-wider text-white transition hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-50"
       >
-        {carregando ? "Processando..." : "Finalizar pagamento"}
+        {carregando
+          ? "Processando..."
+          : salvandoMetodo
+            ? "Registrando..."
+            : "Finalizar pagamento"}
       </button>
 
       <p className="text-center text-xs text-gray-400">
@@ -266,7 +519,10 @@ function FormularioPagamento({
   );
 }
 
+
 export default function Checkout() {
+  const searchParams = useSearchParams();
+  const tokenRecuperacaoUrl = searchParams.get("recuperar");
   const cart = useCartStore((state) => state.cart);
   const paymentIntent = useCartStore((state) => state.paymentIntent);
   const setPaymentIntent = useCartStore((state) => state.setPaymentIntent);
@@ -276,6 +532,24 @@ export default function Checkout() {
 
 const [clientSecret, setClientSecret] = useState("");
 const [trackingToken, setTrackingToken] = useState("");
+const [tokenRecuperacao, setTokenRecuperacao] = useState("");
+
+const [pedidoRecuperado, setPedidoRecuperado] = useState<{
+  id: string;
+  subtotal: number;
+  shippingCost: number;
+  amount: number;
+  currency: string;
+  items: {
+    id: string;
+    name: string;
+    quantity: number;
+    unitPrice: number;
+    image: string;
+    color: string | null;
+    size: string | null;
+  }[];
+} | null>(null);
 
   const [erro, setErro] = useState("");
   const [carregando, setCarregando] = useState(false);
@@ -287,13 +561,20 @@ const [trackingToken, setTrackingToken] = useState("");
     ? "entrega"
     : etapa;
 
-  const assinaturaCarrinho = JSON.stringify(
+const assinaturaCarrinho = JSON.stringify(
   cart
     .map((produto) => ({
       id: produto.id,
+      color: produto.color ?? null,
+      size: produto.size ?? null,
       quantity: produto.quantity ?? 1,
     }))
-    .sort((a, b) => a.id.localeCompare(b.id))
+    .sort(
+      (a, b) =>
+        a.id.localeCompare(b.id) ||
+        (a.color ?? "").localeCompare(b.color ?? "") ||
+        (a.size ?? "").localeCompare(b.size ?? "")
+    )
 );
 
 useEffect(() => {
@@ -319,15 +600,153 @@ useEffect(() => {
   );
 }, [assinaturaCarrinho]);
 
-  const moeda = "BRL";
 
-  const subtotal = cart.reduce(
-    (total, produto) =>
-      total + ((produto.price ?? 0) / 100) * (produto.quantity ?? 1),
-    0
-  );
+useEffect(() => {
+if (!tokenRecuperacaoUrl) return;
 
-  const total = subtotal + FRETE;
+const token = tokenRecuperacaoUrl;
+let ativo = true;
+
+  async function carregarPedidoRecuperado() {
+    setCarregando(true);
+    setErro("");
+
+    try {
+      const response = await fetch(
+        `/api/recuperar-pagamento?token=${encodeURIComponent(token)}`,
+        { cache: "no-store" }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          data.error || "Não foi possível recuperar seu pedido."
+        );
+      }
+
+
+      if (data.status === "replacement_required") {
+        const preparacao = await fetch(
+          "/api/recuperar-pagamento/preparar",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ token }),
+            cache: "no-store",
+          }
+        );
+
+        const novaCobranca = await preparacao.json();
+
+        if (!preparacao.ok) {
+          throw new Error(
+            novaCobranca.error ||
+              "Não foi possível preparar uma nova cobrança."
+          );
+        }
+
+        if (
+          novaCobranca.status !== "recoverable" ||
+          typeof novaCobranca.paymentIntentId !== "string" ||
+          typeof novaCobranca.clientSecret !== "string"
+        ) {
+          throw new Error(
+            "A nova cobrança não foi preparada corretamente."
+          );
+        }
+
+        data.paymentIntentId = novaCobranca.paymentIntentId;
+        data.clientSecret = novaCobranca.clientSecret;
+        data.paymentMethod = novaCobranca.paymentMethod;
+        data.status = "recoverable";
+      }
+
+      if (data.status !== "recoverable") {
+        const mensagens: Record<string, string> = {
+          already_paid: "Este pedido já foi pago.",
+          processing: "Seu pagamento está sendo processado.",
+          canceled: "Este pagamento foi cancelado.",
+        };
+
+        throw new Error(
+          mensagens[data.status] ||
+            "Este pedido não pode ser recuperado."
+        );
+      }
+
+
+      if (!ativo) return;
+
+      setTokenRecuperacao(token);
+      setPedidoRecuperado(data.order);
+      setComprador(data.buyer);
+      setPaymentIntent(data.paymentIntentId);
+      setClientSecret(data.clientSecret);
+      setTrackingToken(data.trackingToken);
+
+      sessionStorage.setItem(
+        "agape_tracking_token",
+        data.trackingToken
+      );
+
+      setEtapa("pagamento");
+    } catch (error) {
+      if (!ativo) return;
+
+      setErro(
+        error instanceof Error
+          ? error.message
+          : "Erro ao recuperar seu pedido."
+      );
+    } finally {
+      if (ativo) setCarregando(false);
+    }
+  }
+
+  carregarPedidoRecuperado();
+
+  return () => {
+    ativo = false;
+  };
+}, [tokenRecuperacaoUrl, setPaymentIntent]);
+
+
+
+
+const moeda = pedidoRecuperado?.currency || "BRL";
+
+const produtosExibidos = pedidoRecuperado
+  ? pedidoRecuperado.items.map((item) => ({
+      id: item.id,
+      name: item.name,
+      image: item.image,
+      price: Number(item.unitPrice),
+      quantity: item.quantity,
+      color: item.color,
+      size: item.size,
+      currency: pedidoRecuperado.currency,
+    }))
+  : cart;
+
+const subtotal = pedidoRecuperado
+  ? Number(pedidoRecuperado.subtotal)
+  : cart.reduce(
+      (total, produto) =>
+        total + ((produto.price ?? 0) / 100) * (produto.quantity ?? 1),
+      0
+    );
+
+const freteExibido = pedidoRecuperado
+  ? Number(pedidoRecuperado.shippingCost)
+  : FRETE;
+
+const total = pedidoRecuperado
+  ? Number(pedidoRecuperado.amount)
+  : subtotal + FRETE;
+
 
   function atualizarCampo(
     name: keyof DadosComprador,
@@ -407,7 +826,7 @@ useEffect(() => {
 
     if (carregando) return;
 
-    if (cart.length === 0) {
+    if (cart.length === 0 && !pedidoRecuperado && !tokenRecuperacaoUrl) {
       setErro("Seu carrinho está vazio.");
       return;
     }
@@ -767,9 +1186,14 @@ useEffect(() => {
                     options={options}
                     stripe={stripePromise}
                   >
-                    <FormularioPagamento
+                  <FormularioPagamento
                     paymentIntentId={paymentIntent}
                     trackingToken={trackingToken}
+                    tokenRecuperacao={tokenRecuperacao}
+                    onPaymentIntentUpdated={(data) => {
+                      setPaymentIntent(data.paymentIntentId);
+                      setClientSecret(data.clientSecret);
+                    }}
                   />
                   </Elements>
                 )}
@@ -791,12 +1215,15 @@ useEffect(() => {
             </h2>
 
             <p className="mt-1 text-xs text-gray-500">
-              {cart.length} {cart.length === 1 ? "produto" : "produtos"}
+              {produtosExibidos.length} {produtosExibidos.length === 1 ? "produto" : "produtos"}
             </p>
 
             <div className="my-6 space-y-5">
-              {cart.map((produto) => (
-                <div key={produto.id} className="flex gap-4">
+              {produtosExibidos.map((produto) => (
+                <div
+                  key={`${produto.id}-${produto.color ?? ""}-${produto.size ?? ""}`}
+                  className="flex gap-4"
+                >
                   <div className="h-20 w-16 shrink-0 overflow-hidden rounded-lg bg-gray-200">
                   <Image
                     src={produto.image}
@@ -815,6 +1242,12 @@ useEffect(() => {
                     <p className="mt-1 text-xs text-gray-500">
                       Quantidade: {produto.quantity ?? 1}
                     </p>
+
+                    {produto.size && (
+                      <p className="mt-1 text-xs text-gray-500">
+                        Tamanho: {produto.size}
+                      </p>
+                    )}
                   </div>
 
                   <p className="whitespace-nowrap text-sm font-semibold">
@@ -836,7 +1269,7 @@ useEffect(() => {
 
               <div className="flex justify-between text-sm text-gray-500">
                 <span>Frete</span>
-                <span>{formatarPreco(FRETE, moeda)}</span>
+                <span>{formatarPreco(freteExibido, moeda)}</span>
               </div>
 
               <div className="flex justify-between border-t border-gray-200 pt-4">
@@ -854,7 +1287,7 @@ useEffect(() => {
               </p>
               <p>
                 <strong className="text-gray-700">Prazo de entrega:</strong>{" "}
-                Até 7 dias úteis após a confirmação do pagamento, incluindo produção e entrega.
+                Até 15 dias úteis após a confirmação do pagamento, incluindo fabricação e entrega.
               </p>
               <p>
                 <strong className="text-gray-700">Frete:</strong>{" "}

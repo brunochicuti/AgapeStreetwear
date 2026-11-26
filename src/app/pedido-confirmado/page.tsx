@@ -11,12 +11,14 @@ type Pedido = {
   shippingCost: number;
   amount: number;
   currency: string;
-  products: {
-    id: string;
-    name: string;
-    quantity: number;
-    price: number;
-  }[];
+products: {
+  id: string;
+  name: string;
+  quantity: number;
+  price: number;
+  color: string | null;
+  size: string | null;
+}[];
 };
 
 type RespostaPedido = {
@@ -189,9 +191,25 @@ export default function PedidoConfirmado() {
                   key={produto.id}
                   className="flex justify-between gap-4 text-sm"
                 >
-                  <span>
-                    {produto.name} × {produto.quantity}
-                  </span>
+              <div>
+                <p className="font-medium">{produto.name}</p>
+
+                {produto.color && (
+                  <p className="mt-1 text-xs text-gray-500">
+                    Cor: {produto.color}
+                  </p>
+                )}
+
+                {produto.size && (
+                  <p className="mt-1 text-xs text-gray-500">
+                    Tamanho: {produto.size}
+                  </p>
+                )}
+
+                <p className="mt-1 text-xs text-gray-500">
+                  Quantidade: {produto.quantity}
+                </p>
+              </div>
 
                   <span className="whitespace-nowrap font-semibold">
                     {formatarPreco(

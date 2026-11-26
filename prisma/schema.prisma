@@ -18,7 +18,7 @@ model User {
 
   orders Order[]
 
-    privacyRequests PrivacyRequest[]
+  privacyRequests PrivacyRequest[]
 }
 
 model Order {
@@ -58,6 +58,13 @@ model Order {
 
   checkoutKey String? @unique
 
+  paymentMethod                String?
+  paymentRecoveryTokenHash     String?   @unique
+  paymentRecoveryExpiresAt     DateTime?
+  paymentReminderSentAt        DateTime?
+  paymentRecoveryLockId        String?
+  paymentRecoveryLockExpiresAt DateTime?
+
   trackingTokenHash      String?   @unique
   trackingTokenCreatedAt DateTime?
 
@@ -91,6 +98,8 @@ model OrderItem {
   quantity        Int
   unitPrice       Int
   image           String?
+  color           String?
+  size            String?
 
   order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
 
@@ -153,29 +162,29 @@ model WhatsAppSession {
 }
 
 model WhatsAppSessionKey {
-  keyType      String
-  keyId        String
+  keyType       String
+  keyId         String
   encryptedData String   @db.Text
-  updatedAt    DateTime @updatedAt
+  updatedAt     DateTime @updatedAt
 
   @@id([keyType, keyId])
 }
 
 model PrivacyRequest {
-  id        String @id @default(cuid())
-  userId    Int?
-  user      User?  @relation(fields: [userId], references: [id], onDelete: SetNull)
+  id     String @id @default(cuid())
+  userId Int?
+  user   User?  @relation(fields: [userId], references: [id], onDelete: SetNull)
 
-  eventId   String? @unique
+  eventId String? @unique
 
-  type      String
-  source    String
+  type           String
+  source         String
   requesterName  String?
   requesterEmail String?
   description    String?
-  status    String   @default("PENDENTE")
+  status         String  @default("PENDENTE")
 
-  receivedAt  DateTime @default(now())
+  receivedAt  DateTime  @default(now())
   completedAt DateTime?
 
   decision      String?

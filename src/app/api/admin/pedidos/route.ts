@@ -44,6 +44,8 @@ export async function GET() {
             quantity: true,
             unitPrice: true,
             image: true,
+            color: true,
+            size: true,
           },
         },
         statusHistory: {

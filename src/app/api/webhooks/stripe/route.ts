@@ -82,18 +82,6 @@ export async function POST(request: Request) {
         throw new Error("Pedido não encontrado para o PaymentIntent.");
       }
 
-      // Impede que um PaymentIntent diferente seja associado ao pedido.
-      if (
-        order.paymentIntentID &&
-        order.paymentIntentID !== paymentIntent.id
-      ) {
-        console.error(
-          "PaymentIntent não corresponde ao pedido:",
-          order.id
-        );
-
-        throw new Error("PaymentIntent não corresponde ao pedido.");
-      }
 
       // Confere se os metadados essenciais correspondem ao pedido.
       if (
@@ -141,6 +129,115 @@ export async function POST(request: Request) {
       ) {
         throw new Error("Chave de checkout do PaymentIntent não corresponde ao pedido.");
       }
+
+      // Protege o pedido enquanto uma cobrança está sendo substituída.
+const bloqueioRecuperacaoAtivo =
+  order.paymentRecoveryLockId !== null &&
+  order.paymentRecoveryLockExpiresAt !== null &&
+  order.paymentRecoveryLockExpiresAt > new Date();
+
+if (
+  bloqueioRecuperacaoAtivo &&
+  order.paymentIntentID === paymentIntent.id
+) {
+  await tx.stripeEvent.create({
+    data: {
+      stripeEventId: event.id,
+      type: event.type,
+    },
+  });
+
+  // Uma aprovação durante a substituição exige revisão manual.
+  if (event.type === "payment_intent.succeeded") {
+    if (
+      ["pending", "failed", "paid", "canceled"].includes(
+        order.status
+      )
+    ) {
+      const revisao = await tx.order.updateMany({
+        where: {
+          id: order.id,
+          status: order.status,
+        },
+        data: {
+          status: "review_required",
+        },
+      });
+
+      if (revisao.count > 0) {
+        await tx.orderStatusHistory.create({
+          data: {
+            orderId: order.id,
+            fromStatus: order.status,
+            toStatus: "review_required",
+            source: "stripe_webhook",
+          },
+        });
+      }
+    }
+
+    return "recovery_lock_payment_requires_manual_review";
+  }
+
+  // Falhas e cancelamentos da cobrança anterior não alteram o pedido.
+  return "recovery_lock_old_payment_ignored";
+}
+
+      // Trata eventos de cobranças antigas, substituídas por outra tentativa.
+if (
+  order.paymentIntentID &&
+  order.paymentIntentID !== paymentIntent.id
+) {
+  console.error(
+    "Evento recebido de um PaymentIntent antigo:",
+    order.id,
+    paymentIntent.id,
+    event.type
+  );
+
+  // Registra o evento para impedir reprocessamento desnecessário.
+  await tx.stripeEvent.create({
+    data: {
+      stripeEventId: event.id,
+      type: event.type,
+    },
+  });
+
+  // Uma cobrança antiga aprovada exige revisão manual.
+  if (event.type === "payment_intent.succeeded") {
+    if (
+      ["pending", "failed", "paid", "canceled"].includes(
+        order.status
+      )
+    ) {
+      const revisao = await tx.order.updateMany({
+        where: {
+          id: order.id,
+          status: order.status,
+        },
+        data: {
+          status: "review_required",
+        },
+      });
+
+      if (revisao.count > 0) {
+        await tx.orderStatusHistory.create({
+          data: {
+            orderId: order.id,
+            fromStatus: order.status,
+            toStatus: "review_required",
+            source: "stripe_webhook",
+          },
+        });
+      }
+    }
+
+    return "stale_payment_requires_manual_review";
+  }
+
+  // Cancelamentos e falhas antigas não alteram o pedido atual.
+  return "stale_payment_ignored";
+}
 
       // Registra o evento dentro da mesma transação.
       await tx.stripeEvent.create({
@@ -245,6 +342,8 @@ export async function POST(request: Request) {
                 },
                 data: {
                   status: "paid",
+                  paymentRecoveryTokenHash: null,
+                  paymentRecoveryExpiresAt: null,
                 },
               })
             : { count: 0 };
@@ -379,6 +478,8 @@ export async function POST(request: Request) {
           },
           data: {
             status: "canceled",
+            paymentRecoveryTokenHash: null,
+            paymentRecoveryExpiresAt: null,
           },
         });
 

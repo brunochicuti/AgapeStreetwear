@@ -5,6 +5,7 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import TrackingTimeline from "@/src/app/components/ui/tracking-timeline";
 
 type Produto = {
   id: string;
@@ -12,8 +13,9 @@ type Produto = {
   quantity: number;
   price: number;
   image: string | null;
+  color: string | null;
+  size: string | null;
 };
-
 type EventoStatus = {
   fromStatus: string | null;
   toStatus: string;
@@ -161,6 +163,19 @@ function ListaProdutos({
 
           <div className="min-w-0 flex-1">
             <p className="text-sm font-bold">{produto.name}</p>
+
+            {produto.color && (
+              <p className="mt-1 text-xs text-gray-500">
+                Cor: {produto.color}
+              </p>
+            )}
+
+            {produto.size && (
+              <p className="mt-1 text-xs text-gray-500">
+                Tamanho: {produto.size}
+              </p>
+            )}
+
             <p className="mt-1 text-xs text-gray-500">
               Quantidade: {produto.quantity}
             </p>
@@ -336,22 +351,25 @@ export default function AcompanharPedidoPage() {
               </p>
             </section>
 
-            <section className="border-b border-gray-200 py-6">
-              <h2 className="text-sm font-bold uppercase tracking-wider">
-                Situação da entrega
-              </h2>
-
-              <p className="mt-3 inline-flex rounded-full bg-gray-100 px-4 py-2 text-sm font-bold text-gray-700">
-                {obterStatusEntrega(pedido.fulfillmentStatus)}
+            <section className="border-b border-gray-200 py-5">
+              <p className="text-sm font-bold text-gray-800">
+                Prazo estimado de entrega
+              </p>
+              <p className="mt-2 text-sm leading-relaxed text-gray-600">
+                Até 15 dias úteis após a confirmação do pagamento, incluindo fabricação e transporte.
               </p>
             </section>
 
             <section className="border-b border-gray-200 py-6">
-            <h2 className="mb-5 text-sm font-bold uppercase tracking-wider">
-                Histórico do pedido
-            </h2>
+              <h2 className="mb-6 text-sm font-bold uppercase tracking-wider">
+                Acompanhamento da entrega
+              </h2>
 
-            <HistoricoPedido historico={pedido.statusHistory} />
+              <TrackingTimeline
+                fulfillmentStatus={pedido.fulfillmentStatus}
+                paymentStatus={pedido.status}
+                statusHistory={pedido.statusHistory}
+              />
             </section>
 
             <section className="py-6">
@@ -391,11 +409,24 @@ export default function AcompanharPedidoPage() {
                     <span className={`rounded-full px-4 py-2 text-xs font-bold ${corStatus(item.status)}`}>
                       {obterStatusPagamento(item.status)}
                     </span>
-
-                    <span className="rounded-full bg-gray-100 px-4 py-2 text-xs font-bold text-gray-700">
-                      {obterStatusEntrega(item.fulfillmentStatus)}
-                    </span>
                   </div>
+
+                  <p className="mt-3 text-xs leading-relaxed text-gray-500">
+                    Prazo de entrega: até 15 dias úteis após a confirmação do pagamento,
+                    incluindo fabricação e transporte.
+                  </p>
+
+                  <section className="border-t border-gray-200 py-6">
+                    <h2 className="mb-6 text-sm font-bold uppercase tracking-wider">
+                      Acompanhamento da entrega
+                    </h2>
+
+                    <TrackingTimeline
+                      fulfillmentStatus={item.fulfillmentStatus}
+                      paymentStatus={item.status}
+                      statusHistory={item.statusHistory}
+                    />
+                  </section>
                 </div>
 
                 <section className="py-6">

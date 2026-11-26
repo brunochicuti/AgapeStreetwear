@@ -85,7 +85,7 @@
           <p>
             Todos os produtos são produzidos sob encomenda, não havendo
             estoque disponível para pronta entrega. O prazo previsto é de
-            até 7 dias úteis após a confirmação do pagamento, incluindo
+            até 15 dias úteis após a confirmação do pagamento, incluindo
             produção e entrega, nas regiões atendidas pela loja.
           </p>
         </section>
@@ -124,7 +124,7 @@
             no checkout.
           </p>
           <p>
-            O prazo previsto para entrega é de até 7 dias úteis após a
+            O prazo previsto para entrega é de até 15 dias úteis após a
             confirmação do pagamento, incluindo o período de produção
             sob encomenda e o transporte até o endereço informado.
           </p>

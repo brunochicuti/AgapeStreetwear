@@ -48,7 +48,7 @@ useEffect(() => {
           href="/"
           className="text-white font-bold text-base md:text-2xl tracking-tight uppercase"
         >
-          AGAPE<br/>STREETWEAR
+          AGAPE
           <span className="text-red-600">.</span>
         </Link>
 

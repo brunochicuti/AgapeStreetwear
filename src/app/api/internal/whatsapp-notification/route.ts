@@ -90,6 +90,8 @@ export async function POST(request: NextRequest) {
               items: {
                 select: {
                   name: true,
+                  color: true,
+                  size: true,
                   quantity: true,
                 },
               },
