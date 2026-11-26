@@ -57,11 +57,17 @@ export default function MagnifierLens({
     setHovering(true);
   }
 
+
   function handlePointerMove(e: PointerEvent<HTMLDivElement>) {
-    if (e.pointerType === "mouse") {
-      setPosition(getPoint(e));
+    if (e.pointerType !== "mouse") return;
+
+    if (e.buttons === 0) {
+      e.stopPropagation();
     }
+
+    setPosition(getPoint(e));
   }
+
 
   function handlePointerDownCapture(e: PointerEvent<HTMLDivElement>) {
     if (e.pointerType !== "touch" || !touchZoom.active) return;
@@ -92,33 +98,33 @@ export default function MagnifierLens({
     const point = getPoint(e);
 
     setTouchZoom((current) => ({
-      ...current,
-      x: Math.max(
-        -current.scale * 100,
-        Math.min(
-          point.x,
-          start.originX - (e.clientX - start.pointerX)
-        )
-      ),
-      y: Math.max(
-        -current.scale * 100,
-        Math.min(
-          point.y,
-          start.originY - (e.clientY - start.pointerY)
-        )
-      ),
+    ...current,
+    x: start.originX + (e.clientX - start.pointerX),
+    y: start.originY + (e.clientY - start.pointerY),
     }));
   }
+
 
   function handlePointerUp(e: PointerEvent<HTMLDivElement>) {
     if (e.pointerType !== "touch") return;
 
+    const now = Date.now();
+
     if (touchZoom.active) {
-      panStart.current = null;
+      if (now - lastTap.current < 350) {
+        setTouchZoom((current) => ({
+          ...current,
+          active: false,
+        }));
+
+        panStart.current = null;
+        lastTap.current = 0;
+      } else {
+        lastTap.current = now;
+      }
+
       return;
     }
-
-    const now = Date.now();
 
     if (now - lastTap.current < 350) {
       const point = getPoint(e);
@@ -126,8 +132,8 @@ export default function MagnifierLens({
       setTouchZoom({
         active: true,
         scale: zoomFactor,
-        x: point.x,
-        y: point.y,
+        x: (e.currentTarget.clientWidth / 2 - point.x) * (zoomFactor - 1),
+        y: (e.currentTarget.clientHeight / 2 - point.y) * (zoomFactor - 1),
       });
 
       lastTap.current = 0;
@@ -135,6 +141,7 @@ export default function MagnifierLens({
       lastTap.current = now;
     }
   }
+
 
   function handleClickCapture(e: React.MouseEvent<HTMLDivElement>) {
     if (!touchInteraction.current) return;
@@ -245,8 +252,8 @@ export default function MagnifierLens({
             <div
               className="absolute inset-0"
               style={{
-                transform: `scale(${touchZoom.scale})`,
-                transformOrigin: `${touchZoom.x}px ${touchZoom.y}px`,
+                transform: `translate(${touchZoom.x}px, ${touchZoom.y}px) scale(${touchZoom.scale})`,
+                transformOrigin: "center center",
               }}
             >
               {children}
