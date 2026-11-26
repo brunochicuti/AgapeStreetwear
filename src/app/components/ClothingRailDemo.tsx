@@ -1,49 +1,102 @@
+
 "use client";
 
 import ClothingRailHero from "./ui/product-rail-gallery";
 import type { RailGarment } from "./ui/product-rail-gallery";
 import { ProductType } from "@/src/types/ProductType";
 
-// Normaliza o nome para comparar ("Camisa Ágape" = "camisa agape").
+type ImagemProduto = {
+  stripeProductId: string;
+  angle: "FRENTE" | "LADO" | "COSTAS";
+  url: string;
+};
+
 const normalizar = (texto: string) =>
-  texto.normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase();
+  texto
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim()
+    .toLowerCase();
+
+function identificarTipo(
+  nome: string
+): NonNullable<RailGarment["kind"]> {
+  const nomeNormalizado = normalizar(nome);
+
+  if (nomeNormalizado.includes("moletom")) return "hoodie";
+  if (nomeNormalizado.includes("jaqueta")) return "jacket";
+  if (nomeNormalizado.includes("casaco")) return "coat";
+  if (
+    nomeNormalizado.includes("tricot") ||
+    nomeNormalizado.includes("malha")
+  ) {
+    return "knit";
+  }
+  if (nomeNormalizado.includes("camisa social")) return "shirt";
+
+  return "tee";
+}
 
 export default function ClothingRailHeroDemo({
   products = [],
+  images = [],
   autoplay = true,
 }: {
   products?: ProductType[];
+  images?: ImagemProduto[];
   autoplay?: boolean;
 }) {
-  // Acha o produto da Stripe que corresponde a uma peça daqui (pelo id ou pelo nome).
-  const achar = (id: string, nome: string) =>
-    products.find((p) => p.id === id) ??
-    products.find((p) => normalizar(p.name) === normalizar(nome));
+  const items: RailGarment[] = products.flatMap((product) => {
+    const imagensDoProduto = images.filter(
+      (imagem) => imagem.stripeProductId === product.id
+    );
 
-  const camisa = achar("prod_VaAw48z5A45rud", "camisa");
+    const buscarImagem = (angle: ImagemProduto["angle"]) =>
+      imagensDoProduto.find((imagem) => imagem.angle === angle)?.url;
 
-  // Peças fixas daqui (com as fotos de frente, costas e lado em public/images/).
-  // A etiqueta vem da Stripe: NOVO, ÚLTIMAS UNIDADES, ESGOTADO ou MAIS VENDIDO.
-  const items: RailGarment[] = [
-    {
-      id: "prod_camisa_agape",
-      name: "Camisa Ágape",
-      description: "Camisa exclusiva com visual frente, costas e lado.",
-      kind: "tee",
-      color: "#EFEBE2",
-      tag: camisa?.etiqueta ?? undefined,
-      image: "/images/Camiseta_cabide_frente.png",
-      backImage: "/images/camiseta_cabide_costas.png",
-      sideImage: "/images/camiseta_cabide_lado.png",
-      product: camisa,
-    },
-  ];
+    const camisaLegada =
+      product.id === "prod_VaAw48z5A45rud" ||
+      normalizar(product.name).includes("camis");
 
-return (
-      <div
-        data-rail-demo
-        className="relative flex min-h-[calc(100svh)] w-full items-center justify-center overflow-hidden bg-[#F5F1E8] text-foreground"
-      >
+    const imagemFrente =
+      buscarImagem("FRENTE") ||
+      (camisaLegada
+        ? "/images/Camiseta_cabide_frente.png"
+        : product.image || undefined);
+
+    if (!imagemFrente) return [];
+
+    return [
+      {
+        id: product.id,
+        name: product.name,
+        description:
+          product.description ||
+          "Peça exclusiva da Agape Streetwear.",
+        kind: identificarTipo(product.name),
+        color: "#EFEBE2",
+        tag: product.etiqueta ?? undefined,
+        image: imagemFrente,
+        backImage:
+          buscarImagem("COSTAS") ||
+          (camisaLegada
+            ? "/images/camiseta_cabide_costas.png"
+            : undefined),
+        sideImage:
+          buscarImagem("LADO") ||
+          (camisaLegada
+            ? "/images/camiseta_cabide_lado.png"
+            : undefined),
+        product,
+      },
+    ];
+  });
+
+  return (
+    <div
+      data-rail-demo
+      className="relative flex min-h-[calc(100svh)] w-full items-center justify-center overflow-hidden bg-[#F5F1E8] text-foreground"
+    >
       <ClothingRailHero
         items={items}
         hanger="none"
@@ -52,14 +105,14 @@ return (
         caption="Passe o cursor e clique na peça para ver os detalhes e as diferentes vistas."
         autoplay={autoplay}
         action={
-            <button
-              type="button"
-              className="rounded-full bg-foreground px-5 py-2.5 text-sm font-medium text-background shadow-sm"
-            >
-              Ver coleção
-            </button>
+          <button
+            type="button"
+            className="rounded-full bg-foreground px-5 py-2.5 text-sm font-medium text-background shadow-sm"
+          >
+            Ver coleção
+          </button>
         }
       />
-      </div>
-    );
-  }
+    </div>
+  );
+}

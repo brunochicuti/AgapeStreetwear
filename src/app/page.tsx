@@ -2,6 +2,7 @@ import { ProductType } from "@/src/types/ProductType";
 import { cacheLife } from "next/cache";
 import ClothingRailHeroDemo from "./components/ClothingRailDemo";
 import Stripe from "stripe";
+import prisma from "@/src/lib/prisma";
 
 /**
  * Etiqueta da peça (aparece pendurada na arara e no card).
@@ -63,10 +64,18 @@ async function getProducts(): Promise<ProductType[]> {
 export default async function Home() {
   const products = await getProducts();
 
+  const images = await prisma.productImage.findMany({
+    select: {
+      stripeProductId: true,
+      angle: true,
+      url: true,
+    },
+  });
+
   return (
     <div className="relative w-full overflow-hidden text-foreground">
       {/* Arara com largura total de ponta a ponta */}
-      <ClothingRailHeroDemo products={products} />
+      <ClothingRailHeroDemo products={products} images={images} />
     </div>
   );
 }
