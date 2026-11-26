@@ -176,7 +176,7 @@ export default function MagnifierLens({
 
   return (
     <div
-      className="relative h-full w-full overflow-hidden touch-pan-y"
+      className="relative h-full w-full overflow-visible touch-pan-y"
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
