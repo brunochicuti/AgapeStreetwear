@@ -1151,7 +1151,6 @@ function Detail({ uid, item, index, total, hanger, labels, reduced, source, onLi
 }) {
   const dialogRef = React.useRef(null as HTMLDivElement | null);
   const figureRef = React.useRef(null as HTMLDivElement | null);
-  const spinRef = React.useRef(null as HTMLDivElement | null);
   const closeRef = React.useRef(null as HTMLButtonElement | null);
   const [side, setSide] = React.useState("front" as "front" | "back");
   const [shown, setShown] = React.useState(false);
@@ -1213,22 +1212,52 @@ const comprarAgora = () => {
   router.push("/checkout");
 };
 
+  const aplicarRotacao = React.useCallback((valor: number) => {
+    figureRef.current
+      ?.querySelectorAll<HTMLElement>("[data-garment-spin]")
+      .forEach((node) => {
+        node.style.transform = `rotateY(${valor.toFixed(2)}deg)`;
+      });
+  }, []);
+
   const spin = React.useCallback(() => {
     const a = angle.current;
-    const node = spinRef.current;
+
     const loop = (now: number) => {
       const dt = a.last ? Math.min(0.034, (now - a.last) / 1000) : 1 / 60;
       a.last = now;
-      const accel = -90 * (a.value - a.target) - 2 * Math.sqrt(90) * 0.82 * a.velocity;
+
+      const accel =
+        -90 * (a.value - a.target) -
+        2 * Math.sqrt(90) * 0.82 * a.velocity;
+
       a.velocity += accel * dt;
       a.value += a.velocity * dt;
-      if (node) node.style.transform = `rotateY(${a.value.toFixed(2)}deg)`;
-      if (Math.abs(a.value - a.target) < 0.05 && Math.abs(a.velocity) < 0.05) { a.value = a.target; if (node) node.style.transform = `rotateY(${a.value}deg)`; a.raf = 0; a.last = 0; return; }
+
+      aplicarRotacao(a.value);
+
+      if (
+        Math.abs(a.value - a.target) < 0.05 &&
+        Math.abs(a.velocity) < 0.05
+      ) {
+        a.value = a.target;
+        aplicarRotacao(a.value);
+        a.raf = 0;
+        a.last = 0;
+        return;
+      }
+
       a.raf = requestAnimationFrame(loop);
     };
-    if (reduced) { a.value = a.target; if (node) node.style.transform = `rotateY(${a.value}deg)`; return; }
+
+    if (reduced) {
+      a.value = a.target;
+      aplicarRotacao(a.value);
+      return;
+    }
+
     if (!a.raf) a.raf = requestAnimationFrame(loop);
-  }, [reduced]);
+  }, [reduced, aplicarRotacao]);
 
   const turnTo = React.useCallback((next: "front" | "back") => {
     const a = angle.current;
@@ -1275,7 +1304,7 @@ const comprarAgora = () => {
     const dx = to.left + to.width / 2 - (from.left + from.width / 2);
     const dy = to.top - from.top;
     const animation = figure.animate([
-      { transform: spinRef.current ? "none" : "none" },
+      { transform: "none" },
       { transform: `translate(${dx * 0.6}px, ${dy * 0.6 - 30}px) scale(${(scale + 1) / 2})`, offset: 0.55 },
       { transform: `translate(${dx}px, ${dy}px) scale(${scale})` },
     ], { duration: 560, easing: "cubic-bezier(.45,0,.55,1)", fill: "forwards" });
@@ -1320,11 +1349,11 @@ const comprarAgora = () => {
         className="absolute inset-0 cursor-grab touch-pan-y active:cursor-grabbing"
         style={{ perspective: "1400px" }}
         onPointerDown={(event) => { const a = angle.current; a.dragging = true; a.startX = event.clientX; a.startAngle = a.value; cancelAnimationFrame(a.raf); a.raf = 0; a.last = 0; event.currentTarget.setPointerCapture(event.pointerId); }}
-        onPointerMove={(event) => { const a = angle.current; if (!a.dragging) return; a.value = clamp(a.startAngle + (event.clientX - a.startX) * 0.45, a.startAngle - 220, a.startAngle + 220); if (spinRef.current) spinRef.current.style.transform = `rotateY(${a.value.toFixed(2)}deg)`; }}
+        onPointerMove={(event) => { const a = angle.current; if (!a.dragging) return; a.value = clamp(a.startAngle + (event.clientX - a.startX) * 0.45, a.startAngle - 220, a.startAngle + 220); aplicarRotacao(a.value); }}
         onPointerUp={() => { const a = angle.current; if (!a.dragging) return; a.dragging = false; const facing = (((a.value % 360) + 360) % 360); turnTo(facing > 90 && facing < 270 ? "back" : "front"); }}
         onPointerCancel={() => { angle.current.dragging = false; turnTo(side); }}
       >
-        <div ref={spinRef} className="absolute inset-0 [transform-style:preserve-3d]">
+        <div data-garment-spin className="absolute inset-0 [transform-style:preserve-3d]">
           {(["front", "back"] as const).map((face) => (
             <div key={face} className="absolute inset-0 [backface-visibility:hidden]" style={{ transform: face === "back" ? "rotateY(180deg)" : undefined, ["--garment-color" as string]: color, ["--garment-under" as string]: mix(color, -0.42) }}>
   
