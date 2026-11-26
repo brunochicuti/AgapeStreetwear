@@ -228,6 +228,23 @@ function handlePointerMove(e: PointerEvent<HTMLDivElement>) {
     >
       {children}
 
+      {desktopPortal &&
+        typeof document !== "undefined" &&
+        createPortal(
+            <div
+            style={{
+                position: "fixed",
+                top: 30,
+                left: 30,
+                width: 100,
+                height: 100,
+                background: "red",
+                zIndex: 2147483647,
+            }}
+            />,
+            document.body
+        )}
+
       {/* Lupa circular para computador */}
       {/* Lupa circular para computador */}
       {desktopPortal ? (
@@ -272,23 +289,6 @@ function handlePointerMove(e: PointerEvent<HTMLDivElement>) {
                   }}
                 >
                   {children}
-
-                  {desktopPortal &&
-                    typeof document !== "undefined" &&
-                    createPortal(
-                        <div
-                        style={{
-                            position: "fixed",
-                            top: 30,
-                            left: 30,
-                            width: 100,
-                            height: 100,
-                            background: "red",
-                            zIndex: 2147483647,
-                        }}
-                        />,
-                        document.body
-                    )}
                 </div>
               </motion.div>,
               document.body
