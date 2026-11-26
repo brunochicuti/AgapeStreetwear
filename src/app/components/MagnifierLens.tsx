@@ -1,9 +1,9 @@
 
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import type { ReactNode, PointerEvent } from "react";
+import type { ReactNode, PointerEvent as ReactPointerEvent } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 
 type MagnifierLensProps = {
@@ -34,6 +34,7 @@ export default function MagnifierLens({
   desktopPortal = false,
 }: MagnifierLensProps) {
   const [hovering, setHovering] = useState(false);
+  const wrapperRef = useRef<HTMLDivElement>(null);
   const [position, setPosition] = useState<Point>({ x: 0, y: 0 });
   const [desktopLensPosition, setDesktopLensPosition] =
   useState<DesktopLensPosition | null>(null);
@@ -55,7 +56,7 @@ export default function MagnifierLens({
     originY: number;
   } | null>(null);
 
-  function getPoint(e: PointerEvent<HTMLDivElement>) {
+  function getPoint(e: ReactPointerEvent<HTMLDivElement>) {
     const rect = e.currentTarget.getBoundingClientRect();
 
     return {
@@ -64,7 +65,7 @@ export default function MagnifierLens({
     };
   }
 
-function handlePointerEnter(e: PointerEvent<HTMLDivElement>) {
+function handlePointerEnter(e: ReactPointerEvent<HTMLDivElement>) {
   if (e.pointerType !== "mouse") return;
   console.log("POINTER ENTER:", e.pointerType, e.clientX, e.clientY);
 
@@ -89,7 +90,7 @@ function handlePointerEnter(e: PointerEvent<HTMLDivElement>) {
 }
 
 
-function handlePointerMove(e: PointerEvent<HTMLDivElement>) {
+function handlePointerMove(e: ReactPointerEvent<HTMLDivElement>) {
   if (e.pointerType !== "mouse") return;
 
   if (e.buttons === 0) {
@@ -109,8 +110,47 @@ function handlePointerMove(e: PointerEvent<HTMLDivElement>) {
   });
 }
 
+useEffect(() => {
+  if (!desktopPortal || !hovering) return;
 
-  function handlePointerDownCapture(e: PointerEvent<HTMLDivElement>) {
+  const acompanharMouse = (event: PointerEvent) => {
+    if (event.pointerType !== "mouse") return;
+
+    const element = wrapperRef.current;
+    if (!element) return;
+
+    const rect = element.getBoundingClientRect();
+
+    const dentro =
+      event.clientX >= rect.left &&
+      event.clientX <= rect.right &&
+      event.clientY >= rect.top &&
+      event.clientY <= rect.bottom;
+
+    if (!dentro) {
+      setHovering(false);
+      return;
+    }
+
+    setDesktopLensPosition({
+      clientX: event.clientX,
+      clientY: event.clientY,
+      left: rect.left,
+      top: rect.top,
+      width: rect.width,
+      height: rect.height,
+    });
+  };
+
+  document.addEventListener("pointermove", acompanharMouse);
+
+  return () => {
+    document.removeEventListener("pointermove", acompanharMouse);
+  };
+}, [desktopPortal, hovering]);
+
+
+  function handlePointerDownCapture(e: ReactPointerEvent<HTMLDivElement>) {
     if (e.pointerType !== "touch" || !touchZoom.active) return;
 
     e.stopPropagation();
@@ -128,7 +168,7 @@ function handlePointerMove(e: PointerEvent<HTMLDivElement>) {
     e.currentTarget.setPointerCapture(e.pointerId);
   }
 
-  function handlePointerMoveCapture(e: PointerEvent<HTMLDivElement>) {
+  function handlePointerMoveCapture(e: ReactPointerEvent<HTMLDivElement>) {
     if (e.pointerType !== "touch" || !touchZoom.active || !panStart.current) {
       return;
     }
@@ -146,7 +186,7 @@ function handlePointerMove(e: PointerEvent<HTMLDivElement>) {
   }
 
 
-  function handlePointerUp(e: PointerEvent<HTMLDivElement>) {
+  function handlePointerUp(e: ReactPointerEvent<HTMLDivElement>) {
     if (e.pointerType !== "touch") return;
 
     const now = Date.now();
@@ -192,7 +232,7 @@ function handlePointerMove(e: PointerEvent<HTMLDivElement>) {
     touchInteraction.current = false;
   }
 
-  function handleZoomTouchEnd(e: PointerEvent<HTMLDivElement>) {
+  function handleZoomTouchEnd(e: ReactPointerEvent<HTMLDivElement>) {
     if (e.pointerType !== "touch" || !touchZoom.active) return;
 
     e.stopPropagation();
@@ -213,6 +253,7 @@ function handlePointerMove(e: PointerEvent<HTMLDivElement>) {
 
   return (
     <div
+      ref={wrapperRef}
       className={`relative h-full w-full overflow-visible ${
         touchZoom.active ? "touch-none" : "touch-pan-y"
       }`}
