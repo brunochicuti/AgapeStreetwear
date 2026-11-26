@@ -1211,13 +1211,15 @@ const comprarAgora = () => {
   router.push("/checkout");
 };
 
-  const aplicarRotacao = React.useCallback((valor: number) => {
-    figureRef.current
-      ?.querySelectorAll<HTMLElement>("[data-garment-spin]")
-      .forEach((node) => {
-        node.style.transform = `rotateY(${valor.toFixed(2)}deg)`;
-      });
-  }, []);
+const aplicarRotacao = React.useCallback((valor: number) => {
+  document
+    .querySelectorAll<HTMLElement>("[data-garment-spin]")
+    .forEach((node) => {
+      if (node.dataset.garmentSpin !== uid) return;
+
+      node.style.transform = `rotateY(${valor.toFixed(2)}deg)`;
+    });
+}, [uid]);
 
   const spin = React.useCallback(() => {
     const a = angle.current;
@@ -1340,7 +1342,7 @@ const comprarAgora = () => {
       className="relative mx-auto aspect-[200/310] h-[min(62vh,560px)] max-h-full origin-top"
     >
       <div aria-hidden="true" className="absolute left-1/2 top-[-40vh] h-[40vh] w-[3px] -translate-x-1/2 rounded-full" style={{ background: "linear-gradient(to right, color-mix(in oklab, var(--color-muted-foreground) 50%, white), var(--color-muted-foreground), color-mix(in oklab, var(--color-muted-foreground) 50%, black))", top: `calc(-40vh + ${(HOOK_TOP / VB_H) * 100}%)` }} />
-      <MagnifierLens zoomFactor={2} lensSize={180}>
+      <MagnifierLens zoomFactor={2} lensSize={180} desktopPortal>
       <div
         className="absolute inset-0 cursor-grab touch-pan-y active:cursor-grabbing"
         style={{ perspective: "1400px" }}
@@ -1349,7 +1351,7 @@ const comprarAgora = () => {
         onPointerUp={() => { const a = angle.current; if (!a.dragging) return; a.dragging = false; const facing = (((a.value % 360) + 360) % 360); turnTo(facing > 90 && facing < 270 ? "back" : "front"); }}
         onPointerCancel={() => { angle.current.dragging = false; turnTo(side); }}
       >
-        <div data-garment-spin className="absolute inset-0 [transform-style:preserve-3d]">
+        <div data-garment-spin={uid} className="absolute inset-0 [transform-style:preserve-3d]">
           {(["front", "back"] as const).map((face) => (
             <div key={face} className="absolute inset-0 [backface-visibility:hidden]" style={{ transform: face === "back" ? "rotateY(180deg)" : undefined, ["--garment-color" as string]: color, ["--garment-under" as string]: mix(color, -0.42) }}>
   
