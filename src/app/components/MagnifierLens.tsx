@@ -221,12 +221,18 @@ function handlePointerMove(e: PointerEvent<HTMLDivElement>) {
       onPointerUp={handlePointerUp}
       onPointerEnter={handlePointerEnter}
       onPointerMove={handlePointerMove}
-        onPointerLeave={(e) => {
-        if (e.pointerType === "mouse") {
-            console.log("MOUSE SAIU DA ÁREA");
-            setHovering(false);
-        }
-        }}
+    onPointerLeave={(e) => {
+    if (e.pointerType === "mouse") {
+        console.log("SAIU:", {
+        relatedTarget: e.relatedTarget,
+        dentroDoComponente: e.currentTarget.contains(
+            e.relatedTarget as Node | null
+        ),
+        });
+
+        setHovering(false);
+    }
+    }}
       onClickCapture={handleClickCapture}
     >
       {children}
