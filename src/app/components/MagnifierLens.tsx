@@ -1,9 +1,9 @@
 
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import type { ReactNode, PointerEvent as ReactPointerEvent } from "react";
+import type { ReactNode, PointerEvent } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 
 type MagnifierLensProps = {
@@ -34,7 +34,6 @@ export default function MagnifierLens({
   desktopPortal = false,
 }: MagnifierLensProps) {
   const [hovering, setHovering] = useState(false);
-  const wrapperRef = useRef<HTMLDivElement>(null);
   const [position, setPosition] = useState<Point>({ x: 0, y: 0 });
   const [desktopLensPosition, setDesktopLensPosition] =
   useState<DesktopLensPosition | null>(null);
@@ -56,7 +55,7 @@ export default function MagnifierLens({
     originY: number;
   } | null>(null);
 
-  function getPoint(e: ReactPointerEvent<HTMLDivElement>) {
+  function getPoint(e: PointerEvent<HTMLDivElement>) {
     const rect = e.currentTarget.getBoundingClientRect();
 
     return {
@@ -65,7 +64,7 @@ export default function MagnifierLens({
     };
   }
 
-function handlePointerEnter(e: ReactPointerEvent<HTMLDivElement>) {
+function handlePointerEnter(e: PointerEvent<HTMLDivElement>) {
   if (e.pointerType !== "mouse") return;
   console.log("POINTER ENTER:", e.pointerType, e.clientX, e.clientY);
 
@@ -90,7 +89,7 @@ function handlePointerEnter(e: ReactPointerEvent<HTMLDivElement>) {
 }
 
 
-function handlePointerMove(e: ReactPointerEvent<HTMLDivElement>) {
+function handlePointerMove(e: PointerEvent<HTMLDivElement>) {
   if (e.pointerType !== "mouse") return;
 
   if (e.buttons === 0) {
@@ -110,47 +109,8 @@ function handlePointerMove(e: ReactPointerEvent<HTMLDivElement>) {
   });
 }
 
-useEffect(() => {
-  if (!desktopPortal || !hovering) return;
 
-  const acompanharMouse = (event: PointerEvent) => {
-    if (event.pointerType !== "mouse") return;
-
-    const element = wrapperRef.current;
-    if (!element) return;
-
-    const rect = element.getBoundingClientRect();
-
-    const dentro =
-      event.clientX >= rect.left &&
-      event.clientX <= rect.right &&
-      event.clientY >= rect.top &&
-      event.clientY <= rect.bottom;
-
-    if (!dentro) {
-      setHovering(false);
-      return;
-    }
-
-    setDesktopLensPosition({
-      clientX: event.clientX,
-      clientY: event.clientY,
-      left: rect.left,
-      top: rect.top,
-      width: rect.width,
-      height: rect.height,
-    });
-  };
-
-  document.addEventListener("pointermove", acompanharMouse);
-
-  return () => {
-    document.removeEventListener("pointermove", acompanharMouse);
-  };
-}, [desktopPortal, hovering]);
-
-
-  function handlePointerDownCapture(e: ReactPointerEvent<HTMLDivElement>) {
+  function handlePointerDownCapture(e: PointerEvent<HTMLDivElement>) {
     if (e.pointerType !== "touch" || !touchZoom.active) return;
 
     e.stopPropagation();
@@ -168,7 +128,7 @@ useEffect(() => {
     e.currentTarget.setPointerCapture(e.pointerId);
   }
 
-  function handlePointerMoveCapture(e: ReactPointerEvent<HTMLDivElement>) {
+  function handlePointerMoveCapture(e: PointerEvent<HTMLDivElement>) {
     if (e.pointerType !== "touch" || !touchZoom.active || !panStart.current) {
       return;
     }
@@ -186,7 +146,7 @@ useEffect(() => {
   }
 
 
-  function handlePointerUp(e: ReactPointerEvent<HTMLDivElement>) {
+  function handlePointerUp(e: PointerEvent<HTMLDivElement>) {
     if (e.pointerType !== "touch") return;
 
     const now = Date.now();
@@ -232,7 +192,7 @@ useEffect(() => {
     touchInteraction.current = false;
   }
 
-  function handleZoomTouchEnd(e: ReactPointerEvent<HTMLDivElement>) {
+  function handleZoomTouchEnd(e: PointerEvent<HTMLDivElement>) {
     if (e.pointerType !== "touch" || !touchZoom.active) return;
 
     e.stopPropagation();
@@ -253,7 +213,6 @@ useEffect(() => {
 
   return (
     <div
-      ref={wrapperRef}
       className={`relative h-full w-full overflow-visible ${
         touchZoom.active ? "touch-none" : "touch-pan-y"
       }`}
