@@ -222,19 +222,18 @@ function handlePointerMove(e: PointerEvent<HTMLDivElement>) {
       {children}
 
       {/* Lupa circular para computador */}
+
       {/* Lupa circular para computador */}
       {desktopPortal ? (
-        <AnimatePresence>
-          {hovering &&
-            desktopLensPosition &&
-            typeof document !== "undefined" &&
-            createPortal(
+        hovering &&
+        desktopLensPosition &&
+        typeof document !== "undefined"
+          ? createPortal(
               <motion.div
                 initial={{ opacity: 0, scale: 0.92 }}
                 animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.92 }}
                 transition={{ duration: 0.12 }}
-                className="pointer-events-none fixed z-[9999] overflow-hidden rounded-full border-2 border-white/80"
+                className="pointer-events-none fixed z-[2147483647] overflow-hidden rounded-full border-2 border-white/80"
                 style={{
                   left: desktopLensPosition.clientX - lensSize / 2,
                   top: desktopLensPosition.clientY - lensSize / 2,
@@ -268,8 +267,8 @@ function handlePointerMove(e: PointerEvent<HTMLDivElement>) {
                 </div>
               </motion.div>,
               document.body
-            )}
-        </AnimatePresence>
+            )
+          : null
       ) : (
         <AnimatePresence>
           {hovering && (
