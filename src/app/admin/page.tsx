@@ -64,6 +64,12 @@ type SolicitacaoPrivacidade = {
   } | null;
 };
 
+type AbaAdmin =
+  | "visao-geral"
+  | "pedidos"
+  | "produtos"
+  | "privacidade";
+
 
 const proximoStatus: Record<string, string> = {
   pending: "preparing",
@@ -111,6 +117,30 @@ export default function AdminPage() {
   const [tipoSolicitacao, setTipoSolicitacao] = useState("ACESSO");
   const [fonteSolicitacao, setFonteSolicitacao] = useState("EMAIL");
   const [salvandoSolicitacao, setSalvandoSolicitacao] = useState(false);
+  const [abaAtiva, setAbaAtiva] =
+  useState<AbaAdmin>("visao-geral");
+
+  const [buscaPedido, setBuscaPedido] = useState("");
+const [filtroEntrega, setFiltroEntrega] = useState("todos");
+
+const pedidosFiltrados = pedidos.filter((pedido) => {
+  const termo = buscaPedido.trim().toLowerCase();
+
+  const correspondeBusca =
+    !termo ||
+    [
+      pedido.id,
+      pedido.fullName ?? "",
+      pedido.email ?? "",
+      pedido.phone ?? "",
+    ].some((valor) => valor.toLowerCase().includes(termo));
+
+  const correspondeEntrega =
+    filtroEntrega === "todos" ||
+    pedido.fulfillmentStatus === filtroEntrega;
+
+  return correspondeBusca && correspondeEntrega;
+});
 
   const carregarPedidos = useCallback(async () => {
     try {
@@ -365,7 +395,96 @@ export default function AdminPage() {
           </button>
         </header>
 
+                <nav className="mb-8 flex gap-2 overflow-x-auto border-b border-neutral-800 pb-3">
+          {[
+            { id: "visao-geral", nome: "Visão geral" },
+            { id: "pedidos", nome: "Pedidos" },
+            { id: "produtos", nome: "Produtos e imagens" },
+            { id: "privacidade", nome: "Privacidade" },
+          ].map((aba) => (
+            <button
+              key={aba.id}
+              type="button"
+              onClick={() => setAbaAtiva(aba.id as AbaAdmin)}
+              className={`shrink-0 rounded-lg px-4 py-3 text-sm font-semibold transition ${
+                abaAtiva === aba.id
+                  ? "bg-white text-black"
+                  : "text-neutral-400 hover:bg-neutral-800 hover:text-white"
+              }`}
+            >
+              {aba.nome}
+            </button>
+          ))}
+        </nav>
 
+                {abaAtiva === "visao-geral" && (
+          <section className="mb-10 space-y-6">
+            <div>
+              <h2 className="text-xl font-bold text-white">
+                Visão geral
+              </h2>
+              <p className="mt-1 text-sm text-neutral-400">
+                Resumo dos pedidos e da operação da loja.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4 md:grid-cols-3">
+              {[
+                {
+                  titulo: "Total de pedidos",
+                  valor: pedidos.length,
+                },
+                {
+                  titulo: "Pagamentos pendentes",
+                  valor: pedidos.filter(
+                    (p) => p.status === "pending"
+                  ).length,
+                },
+                {
+                  titulo: "Aguardando preparação",
+                  valor: pedidos.filter(
+                    (p) =>
+                      p.status === "paid" &&
+                      p.fulfillmentStatus === "pending"
+                  ).length,
+                },
+                {
+                  titulo: "Em preparação",
+                  valor: pedidos.filter(
+                    (p) => p.fulfillmentStatus === "preparing"
+                  ).length,
+                },
+                {
+                  titulo: "Enviados",
+                  valor: pedidos.filter(
+                    (p) => p.fulfillmentStatus === "shipped"
+                  ).length,
+                },
+                {
+                  titulo: "Entregues",
+                  valor: pedidos.filter(
+                    (p) => p.fulfillmentStatus === "delivered"
+                  ).length,
+                },
+              ].map((indicador) => (
+                <div
+                  key={indicador.titulo}
+                  className="rounded-xl border border-neutral-800 bg-neutral-900 p-5"
+                >
+                  <p className="text-sm text-neutral-400">
+                    {indicador.titulo}
+                  </p>
+                  <p className="mt-3 text-3xl font-bold text-white">
+                    {carregando ? "—" : indicador.valor}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
+          
+        {abaAtiva === "privacidade" && (
         <section className="mb-10 rounded-xl border border-neutral-800 bg-neutral-900 p-6 sm:p-8">
           <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
             <div>
@@ -621,12 +740,53 @@ export default function AdminPage() {
             </div>
           )}
         </section>
+      )}
 
 
-        <section className="mb-10 rounded-xl border border-neutral-800 bg-neutral-900 p-6 sm:p-8">
-          <BibliotecaImagens />
-        </section>
+        {abaAtiva === "produtos" && (
+          <section className="mb-10 rounded-xl border border-neutral-800 bg-neutral-900 p-6 sm:p-8">
+            <BibliotecaImagens />
+          </section>
+        )}
 
+          {abaAtiva === "pedidos" && (
+          <>
+
+                      <section className="mb-6 rounded-xl border border-neutral-800 bg-neutral-900 p-5">
+              <div className="grid gap-4 md:grid-cols-2">
+                <label className="text-sm text-neutral-300">
+                  Buscar pedido
+                  <input
+                    type="text"
+                    value={buscaPedido}
+                    onChange={(e) => setBuscaPedido(e.target.value)}
+                    placeholder="Número, cliente, e-mail ou telefone..."
+                    className="mt-2 w-full rounded-lg border border-neutral-700 bg-neutral-950 px-4 py-3 text-white outline-none focus:border-white"
+                  />
+                </label>
+
+                <label className="text-sm text-neutral-300">
+                  Filtrar por entrega
+                  <select
+                    value={filtroEntrega}
+                    onChange={(e) => setFiltroEntrega(e.target.value)}
+                    className="mt-2 w-full rounded-lg border border-neutral-700 bg-neutral-950 px-4 py-3 text-white outline-none focus:border-white"
+                  >
+                    <option value="todos">Todas as situações</option>
+                    <option value="awaiting_payment">Aguardando pagamento</option>
+                    <option value="pending">Aguardando preparação</option>
+                    <option value="preparing">Em preparação</option>
+                    <option value="ready">Pronto para envio</option>
+                    <option value="shipped">Enviado</option>
+                    <option value="delivered">Entregue</option>
+                  </select>
+                </label>
+              </div>
+
+              <p className="mt-4 text-xs text-neutral-500">
+                {pedidosFiltrados.length} de {pedidos.length} pedidos encontrados
+              </p>
+            </section>
 
         {erro && (
           <div className="mb-6 rounded-lg border border-red-900 bg-red-950 p-4 text-sm text-red-300">
@@ -642,9 +802,18 @@ export default function AdminPage() {
           <div className="rounded-xl border border-neutral-800 p-10 text-center">
             <p className="font-bold">Nenhum pedido encontrado.</p>
           </div>
+        ) : pedidosFiltrados.length === 0 ? (
+          <div className="rounded-xl border border-neutral-800 bg-neutral-900 p-10 text-center">
+            <p className="font-bold text-white">
+              Nenhum pedido encontrado nessa pesquisa.
+            </p>
+            <p className="mt-2 text-sm text-neutral-400">
+              Experimente alterar o termo pesquisado ou o filtro de entrega.
+            </p>
+          </div>
         ) : (
           <div className="space-y-6">
-            {pedidos.map((pedido) => {
+            {pedidosFiltrados.map((pedido) => {
               const proximo = proximoStatus[pedido.fulfillmentStatus];
               const historicoEntrega = pedido.statusHistory.filter(
                 (evento) => evento.source === "admin"
@@ -655,7 +824,8 @@ export default function AdminPage() {
                   key={pedido.id}
                   className="rounded-xl border border-neutral-800 bg-neutral-900 p-6 sm:p-8"
                 >
-                  <div className="flex flex-wrap justify-between gap-4 border-b border-neutral-800 pb-5">
+                  <details className="group">
+                  <summary className="flex cursor-pointer list-none flex-wrap items-center justify-between gap-4 border-b border-neutral-800 pb-5">
                     <div>
                       <p className="text-xs uppercase tracking-wider text-neutral-500">
                         Pedido
@@ -676,7 +846,12 @@ export default function AdminPage() {
                         Entrega: {nomesEntrega[pedido.fulfillmentStatus] ?? pedido.fulfillmentStatus}
                       </span>
                     </div>
-                  </div>
+                      <span className="text-xs font-bold text-neutral-400 transition group-open:rotate-180">
+                        Ver detalhes⌄
+                      </span>
+                    </summary>
+
+                    <div className="pt-2">
 
                   <div className="grid gap-8 py-6 md:grid-cols-2">
                     <section>
@@ -815,10 +990,14 @@ export default function AdminPage() {
                       </button>
                     </div>
                   )}
+                  </div>
+                </details>
                 </article>
               );
             })}
-          </div>
+            </div>
+          )}
+          </>
         )}
       </div>
     </main>
