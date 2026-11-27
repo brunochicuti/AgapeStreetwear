@@ -41,7 +41,7 @@ export default function CheckoutButton({ totalPrice }: CheckoutButtonProps) {
         finalizando ? "pointer-events-none opacity-70" : ""
       }`}
     >
-      {finalizando ? "Abrindo checkout..." : "Finalizar compra"}
+      {finalizando ? "Finalizando compra..." : "Finalizar compra"}
       <ArrowRight size={17} />
     </button>
   );
