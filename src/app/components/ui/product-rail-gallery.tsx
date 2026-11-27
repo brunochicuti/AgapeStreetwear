@@ -1406,7 +1406,7 @@ const aplicarRotacao = React.useCallback((valor: number) => {
             </span>
 
             <div className="flex gap-3">
-              {(["P", "M", "G"] as const).map((size) => (
+              {(["PP","P", "M", "G"] as const).map((size) => (
                 <button
                   key={size}
                   type="button"
