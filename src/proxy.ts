@@ -9,6 +9,7 @@ const isPublicRoute = createRouteMatcher([
   "/termos(.*)",
   "/privacidade(.*)",
   "/cookies(.*)",
+  "/api/cron(.*)",
   "/api/webhooks(.*)",
   "/api/internal/whatsapp-notification(.*)",
   "/api/internal/whatsapp-session(.*)",
@@ -16,6 +17,7 @@ const isPublicRoute = createRouteMatcher([
 
 const isAdminRoute = createRouteMatcher([
   "/admin(.*)",
+  "/api/admin(.*)",
 ]);
 
 export default clerkMiddleware(async (auth, req) => {

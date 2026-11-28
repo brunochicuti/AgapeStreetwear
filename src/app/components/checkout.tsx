@@ -851,6 +851,7 @@ const total = pedidoRecuperado
           items: cart.map((produto) => ({
             id: produto.id,
             quantity: produto.quantity ?? 1,
+            size: produto.size ?? undefined,
           })),
           comprador,
         }),

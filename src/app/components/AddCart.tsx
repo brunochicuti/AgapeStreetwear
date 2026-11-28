@@ -14,6 +14,7 @@ const spaceGrotesk = Space_Grotesk({
 export default function AddCart({ product }: { product: ProductType }) {
   const [quantity, setQuantity] = useState(1);
   const { addProduct, toggleCart } = useCartStore();
+  const [size, setSize] = useState<string | null>(null);
 
   const esgotado = product.etiqueta === "ESGOTADO";
 
@@ -27,8 +28,12 @@ export default function AddCart({ product }: { product: ProductType }) {
         <div className="flex w-fit items-center rounded-md border border-white/20">
           <button
             type="button"
-            disabled={esgotado || quantity <= 1}
-            onClick={() => setQuantity((q) => Math.max(1, q - 1))}
+            disabled={esgotado || !size}
+            onClick={() => {
+              if (esgotado || !size) return;
+              addProduct({ ...product, size }, quantity);
+              toggleCart();
+            }}
             className="p-3 text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-30"
             aria-label="Diminuir quantidade"
           >
@@ -66,6 +71,26 @@ export default function AddCart({ product }: { product: ProductType }) {
             : "bg-white text-black hover:bg-neutral-200"
         }`}
       >
+        <div className="flex flex-col gap-2">
+  <span className="text-sm font-semibold text-white">Tamanho</span>
+  <div className="flex gap-2">
+    {["P", "M", "G"].map((t) => (
+      <button
+        key={t}
+        type="button"
+        disabled={esgotado}
+        onClick={() => setSize(t)}
+        className={`h-10 w-10 rounded-md border text-sm font-bold transition ${
+          size === t
+            ? "border-white bg-white text-black"
+            : "border-white/20 text-white hover:bg-white/10"
+        }`}
+      >
+        {t}
+      </button>
+    ))}
+  </div>
+</div>
         {esgotado ? "Esgotado" : "Adicionar à sacola"}
       </button>
     </div>
