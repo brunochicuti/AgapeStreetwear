@@ -61,7 +61,7 @@ function montarEmail(
       assunto: "Sua compra está quase concluída | Agape Streetwear",
       titulo: "Sua compra está esperando por você!",
       texto:
-        "Percebemos que seu pedido ainda está aguardando o pagamento. Seus produtos continuam registrados e você pode retornar ao checkout para concluir sua compra com segurança.",
+        "Percebemos que seu pedido ainda está aguardando o pagamento. Seus produtos continuam registrados e você pode voltar ao pagamento para concluir sua compra com segurança.",
       preheader: "Finalize seu pedido na Agape Streetwear.",
     },
   };

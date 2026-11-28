@@ -45,7 +45,7 @@ export async function GET(request: Request) {
  const agora = new Date();
 
 const limiteOutros = new Date(
-  agora.getTime() - 60 * 60 * 1000
+  agora.getTime() - 10 * 60 * 1000
 );
 
 // Cartão e pedidos sem método selecionado: 60 minutos.
@@ -107,7 +107,7 @@ for (const pedido of pedidosPix) {
 
     if (pagamento.status === "requires_payment_method") {
       horarioLembrete =
-        pedido.createdDate.getTime() + 30 * 60 * 1000;
+        pedido.createdDate.getTime() + 10 * 60 * 1000;
     } else if (
       pagamento.status === "requires_action" &&
       pagamento.next_action?.pix_display_qr_code?.expires_at
