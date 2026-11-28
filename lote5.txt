@@ -1,0 +1,593 @@
+﻿
+      if (!conteudo || typeof conteudo !== "object" || Array.isArray(conteudo)) {
+        return erroJson("Dados do checkout inválidos.", 400);
+      }
+
+      body = conteudo as Record<string, unknown>;
+    } catch {
+      return erroJson("Corpo da requisição inválido.", 400);
+    }
+
+    const items = body.items as ItemCarrinho[];
+    const comprador = body.comprador as DadosComprador;
+    const checkoutKey = body.checkoutKey;
+
+    if (!validarCheckoutKey(checkoutKey)) {
+      return erroJson("Identificação da compra inválida.", 400);
+    }
+
+    if (
+      !Array.isArray(items) ||
+      items.length === 0 ||
+      items.length > 50 ||
+      items.some(
+        (item) =>
+          !item ||
+          typeof item.id !== "string" ||
+          !/^prod_[a-zA-Z0-9]{1,100}$/.test(item.id) ||
+          !Number.isInteger(item.quantity) ||
+          item.quantity <= 0 ||
+          item.quantity > 100 ||
+          typeof item.size !== "string" ||
+          !["P", "M", "G"].includes(item.size) ||
+          (item.color !== undefined &&
+            item.color !== null &&
+            (typeof item.color !== "string" ||
+              !item.color.trim() ||
+              item.color.length > 60))
+      )
+    ) {
+      return erroJson("Itens do pedido inválidos.", 400);
+    }
+
+    if (
+      !comprador ||
+      typeof comprador !== "object" ||
+      Array.isArray(comprador)
+    ) {
+      return erroJson("Dados do comprador ausentes.", 400);
+    }
+
+    const erroComprador = validarComprador(comprador);
+
+    if (erroComprador) {
+      return erroJson(erroComprador, 400);
+    }
+
+    const erroCep = await validarCepEntrega(comprador);
+
+    if (erroCep) {
+      return erroJson(erroCep, 400);
+    }
+
+    const variacoes = new Map<
+      string,
+      {
+        productId: string;
+        color: string | null;
+        size: string;
+        quantity: number;
+      }
+    >();
+
+    for (const item of items) {
+      const color = item.color?.trim() || null;
+      const size = item.size;
+      const chave = JSON.stringify([item.id, color, size]);
+
+      const quantidade =
+        (variacoes.get(chave)?.quantity ?? 0) + item.quantity;
+
+      if (quantidade > 100) {
+        return erroJson(
+          "A quantidade máxima por variação é 100 unidades.",
+          400
+        );
+      }
+
+      variacoes.set(chave, {
+        productId: item.id,
+        color,
+        size,
+        quantity: quantidade,
+      });
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { externalId: userId },
+    });
+
+    if (!user) {
+      return erroJson("Usuário não encontrado.", 404);
+    }
+
+    if (user.deletionRequestedAt) {
+      return erroJson(
+        "Esta conta está em processo de exclusão e não pode iniciar novas compras.",
+        403
+      );
+    }
+
+    const dadosPedido = {
+      fullName: comprador.fullName.trim(),
+      cpf: (comprador.cpf ?? "").replace(/\D/g, "") || null,
+      email: comprador.email.trim().toLowerCase(),
+      phone: comprador.phone.replace(/\D/g, ""),
+      zipCode: comprador.zipCode.replace(/\D/g, ""),
+      street: comprador.street.trim(),
+      number: comprador.number.trim(),
+      complement: comprador.complement?.trim() || null,
+      neighborhood: comprador.neighborhood.trim(),
+      city: comprador.city.trim(),
+      state: comprador.state.trim().toUpperCase(),
+    };
+
+    const productData = await Promise.all(
+        Array.from(variacoes.values()).map(
+          async ({ productId, color, size, quantity }) => {
+          const product = await stripe.products.retrieve(productId);
+
+          if (product.deleted || !product.active) {
+            throw new Error("Um dos produtos não está disponível.");
+          }
+
+          const prices = await stripe.prices.list({
+            product: productId,
+            active: true,
+            limit: 100,
+          });
+
+          const activePrices = prices.data.filter(
+            (price) =>
+              price.currency === "brl" &&
+              price.type === "one_time" &&
+              price.unit_amount !== null
+          );
+
+          if (activePrices.length !== 1) {
+            throw new Error(
+              `O produto "${product.name}" não possui exatamente um preço ativo em reais.`
+            );
+          }
+
+          const price = activePrices[0];
+
+          if (
+            price.unit_amount === null ||
+            price.unit_amount <= 0
+          ) {
+            throw new Error("Preço inválido para um produto.");
+          }
+
+        return {
+          stripeProductId: productId,
+          name: product.name,
+          description: product.description,
+          quantity,
+          unitPrice: price.unit_amount,
+          image: product.images[0] || null,
+          color,
+          size,
+        };
+        }
+      )
+    );
+
+    const subtotal = productData.reduce(
+      (total, item) => total + item.unitPrice * item.quantity,
+      0
+    );
+
+    const total = subtotal + FRETE_CENTAVOS;
+
+    if (
+      !Number.isSafeInteger(subtotal) ||
+      !Number.isSafeInteger(total) ||
+      total <= FRETE_CENTAVOS
+    ) {
+      return erroJson("Valor total inválido.", 400);
+    }
+
+    const dadosFinanceiros = {
+      subtotal: subtotal / 100,
+      shippingCost: FRETE_CENTAVOS / 100,
+      amount: total / 100,
+    };
+
+  const checkoutExistente = await prisma.order.findFirst({
+    where: {
+      checkoutKey,
+      userId: user.id,
+    },
+    include: {
+      items: {
+        select: {
+          stripeProductId: true,
+          name: true,
+          quantity: true,
+          unitPrice: true,
+          color: true,
+          size: true,
+        },
+      },
+    },
+  });
+
+    if (checkoutExistente) {
+const produtosIguais =
+  checkoutExistente.items.length === productData.length &&
+  productData.every((novoProduto) => {
+    const produtoExistente = checkoutExistente.items.find((produto) =>
+      produto.stripeProductId
+        ? produto.stripeProductId === novoProduto.stripeProductId &&
+          produto.color === novoProduto.color &&
+          produto.size === novoProduto.size
+        : produto.name === novoProduto.name &&
+          produto.color === novoProduto.color &&
+          produto.size === novoProduto.size
+    );
+
+    return (
+      produtoExistente !== undefined &&
+      produtoExistente.quantity === novoProduto.quantity &&
+      produtoExistente.unitPrice === novoProduto.unitPrice
+    );
+  });
+
+if (!produtosIguais) {
+  return erroJson(
+    "O carrinho foi alterado. Inicie uma nova tentativa de compra.",
+    409
+  );
+}
+
+      if (
+        checkoutExistente.status === "paid" ||
+        checkoutExistente.status === "canceled" ||
+        checkoutExistente.status === "review_required"
+      ) {
+        return erroJson(
+          "Esta tentativa de compra já foi finalizada. Inicie uma nova compra.",
+          409
+        );
+      }
+
+      if (!checkoutExistente.paymentIntentID) {
+        return erroJson(
+          "O pedido não possui um pagamento associado. Inicie uma nova compra.",
+          409
+        );
+      }
+
+      const currentIntent =
+        await stripe.paymentIntents.retrieve(
+          checkoutExistente.paymentIntentID
+        );
+
+      if (
+        currentIntent.metadata.userId !== userId ||
+        currentIntent.metadata.checkoutKey !== checkoutKey ||
+        (currentIntent.metadata.orderId &&
+          currentIntent.metadata.orderId !== checkoutExistente.id) ||
+        currentIntent.amount !== total ||
+        currentIntent.currency !== "brl"
+      ) {
+        return erroJson(
+          "Não foi possível validar a tentativa de pagamento.",
+          409
+        );
+      }
+
+      if (
+        !["pending", "failed"].includes(checkoutExistente.status) ||
+        currentIntent.status !== "requires_payment_method"
+      ) {
+        return erroJson(
+          "O pagamento anterior não pode ser reutilizado. Consulte o pedido antes de iniciar outra tentativa.",
+          409
+        );
+      }
+
+      const updatedIntent =
+        await stripe.paymentIntents.update(
+          currentIntent.id,
+          {
+            amount: total,
+            metadata: {
+              userId,
+              orderId: checkoutExistente.id,
+              checkoutKey,
+            },
+          }
+        );
+
+      if (!updatedIntent.client_secret) {
+        return erroJson(
+          "Não foi possível preparar o pagamento.",
+          500
+        );
+      }
+
+      const order = await prisma.$transaction(async (tx) => {
+        const dadosAtualizacao = {
+          ...dadosPedido,
+          ...dadosFinanceiros,
+          currency: "brl",
+          status: "pending",
+        };
+
+        const reabertura = await tx.order.updateMany({
+          where: {
+            id: checkoutExistente.id,
+            status: "failed",
+          },
+          data: dadosAtualizacao,
+        });
+
+        if (reabertura.count > 0) {
+          await tx.orderStatusHistory.create({
+            data: {
+              orderId: checkoutExistente.id,
+              fromStatus: "failed",
+              toStatus: "pending",
+              source: "checkout",
+            },
+          });
+        } else {
+          const atualizacaoPendente = await tx.order.updateMany({
+            where: {
+              id: checkoutExistente.id,
+              status: "pending",
+            },
+            data: dadosAtualizacao,
+          });
+
+          if (atualizacaoPendente.count === 0) {
+            return null;
+          }
+        }
+
+        return tx.order.update({
+          where: {
+            id: checkoutExistente.id,
+          },
+          data: {
+            items: {
+              deleteMany: {},
+              create: productData,
+            },
+          },
+        });
+      });
+
+      if (!order) {
+        return erroJson(
+          "Esta tentativa de compra foi finalizada ou precisa de verificação. Atualize a página e consulte o pedido.",
+          409
+        );
+      }
+
+
+    const trackingToken = await obterTokenAcompanhamento(order.id);
+
+    return respostaPagamento(
+      updatedIntent,
+      order.id,
+      trackingToken
+    );
+    }
+
+    const paymentIntent = await stripe.paymentIntents.create(
+      {
+        amount: total,
+        currency: "brl",
+        automatic_payment_methods: {
+          enabled: true,
+        },
+        metadata: {
+          userId,
+          checkoutKey,
+        },
+      },
+      {
+        idempotencyKey: `checkout-${user.id}-${checkoutKey}`,
+      }
+    );
+
+    if (!paymentIntent.client_secret) {
+      return erroJson(
+        "Não foi possível preparar o pagamento.",
+        500
+      );
+    }
+
+    let order;
+
+    try {
+      order = await prisma.order.create({
+        data: {
+          user: {
+            connect: { id: user.id },
+          },
+          ...dadosPedido,
+          ...dadosFinanceiros,
+          currency: "brl",
+          status: "pending",
+          checkoutKey,
+          paymentIntentID: paymentIntent.id,
+          items: {
+            create: productData,
+          },
+          statusHistory: {
+            create: {
+              fromStatus: null,
+              toStatus: "pending",
+              source: "checkout",
+            },
+          },
+        },
+      });
+    } catch (error) {
+      if (
+        !error ||
+        typeof error !== "object" ||
+        !("code" in error) ||
+        error.code !== "P2002"
+      ) {
+        throw error;
+      }
+
+    const pedidoExistente = await prisma.order.findFirst({
+      where: {
+        checkoutKey,
+        userId: user.id,
+      },
+      include: {
+        items: {
+          select: {
+            stripeProductId: true,
+            name: true,
+            quantity: true,
+            unitPrice: true,
+          },
+        },
+      },
+    });
+
+      if (
+        !pedidoExistente ||
+        !pedidoExistente.paymentIntentID ||
+        pedidoExistente.status !== "pending"
+      ) {
+        return erroJson(
+          "Não foi possível recuperar a tentativa de compra.",
+          409
+        );
+      }
+
+    const produtosIguais =
+      pedidoExistente.items.length === productData.length &&
+      productData.every((novoProduto) => {
+        const produtoExistente = pedidoExistente.items.find((produto) =>
+          produto.stripeProductId
+            ? produto.stripeProductId === novoProduto.stripeProductId
+            : produto.name === novoProduto.name
+        );
+
+        return (
+          produtoExistente !== undefined &&
+          produtoExistente.quantity === novoProduto.quantity &&
+          produtoExistente.unitPrice === novoProduto.unitPrice
+        );
+      });
+
+    if (!produtosIguais) {
+      return erroJson(
+        "A composição do pedido não corresponde à tentativa de compra.",
+        409
+      );
+    }
+
+      const intentExistente =
+        await stripe.paymentIntents.retrieve(
+          pedidoExistente.paymentIntentID
+        );
+
+      const pagamentoValido =
+        pedidoExistente.paymentIntentID === paymentIntent.id &&
+        intentExistente.metadata.userId === userId &&
+        intentExistente.metadata.checkoutKey === checkoutKey &&
+        (!intentExistente.metadata.orderId ||
+          intentExistente.metadata.orderId === pedidoExistente.id) &&
+        pedidoExistente.subtotal === subtotal / 100 &&
+        pedidoExistente.shippingCost === FRETE_CENTAVOS / 100 &&
+        pedidoExistente.amount === total / 100 &&
+        intentExistente.amount === total &&
+        intentExistente.currency === "brl" &&
+        intentExistente.status === "requires_payment_method" &&
+        !!intentExistente.client_secret;
+
+      if (!pagamentoValido) {
+        return erroJson(
+          "Não foi possível validar a tentativa de pagamento.",
+          409
+        );
+      }
+
+      const intentRecuperado =
+        await stripe.paymentIntents.update(
+          intentExistente.id,
+          {
+            metadata: {
+              userId,
+              checkoutKey,
+              orderId: pedidoExistente.id,
+            },
+          }
+        );
+
+      if (!intentRecuperado.client_secret) {
+        return erroJson(
+          "Não foi possível recuperar o pagamento.",
+          500
+        );
+      }
+
+      const trackingToken = await obterTokenAcompanhamento(
+        pedidoExistente.id
+      );
+
+      return respostaPagamento(
+        intentRecuperado,
+        pedidoExistente.id,
+        trackingToken
+      );
+    }
+
+    const intentAtualizado =
+      await stripe.paymentIntents.update(
+        paymentIntent.id,
+        {
+          metadata: {
+            userId,
+            checkoutKey,
+            orderId: order.id,
+          },
+        }
+      );
+
+    if (!intentAtualizado.client_secret) {
+      return erroJson(
+        "Não foi possível preparar o pagamento.",
+        500
+      );
+    }
+
+    const trackingToken = await obterTokenAcompanhamento(order.id);
+
+    return respostaPagamento(
+      intentAtualizado,
+      order.id,
+      trackingToken
+    );
+  } catch (error) {
+    console.error("Erro no checkout:", error);
+
+    if (error instanceof Error) {
+      const mensagem = error.message;
+
+      if (
+        mensagem.includes("não está disponível") ||
+        mensagem.includes("preço ativo") ||
+        mensagem.includes("Preço inválido")
+      ) {
+        return erroJson(mensagem, 400);
+      }
+    }
+
+    return erroJson(
+      "Não foi possível iniciar o pagamento.",
+      500
+    );
+  }
+}

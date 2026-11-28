@@ -1,0 +1,161 @@
+﻿===== INICIO DO create-payment-intent =====
+
+import { auth } from "@clerk/nextjs/server";
+import prisma from "@/src/lib/prisma";
+import { stripe } from "@/src/lib/stripe";
+import { obterTokenAcompanhamento } from "@/src/lib/tracking";
+import { verificarRateLimitCheckout } from "@/src/lib/rate-limit";
+import { registrarNotificacaoEmail } from "@/src/lib/notificacoes-email";
+
+const FRETE_CENTAVOS = 500;
+
+type ItemCarrinho = {
+  id: string;
+  color?: string | null;
+  size: string;
+  quantity: number;
+};
+
+type DadosComprador = {
+  fullName: string;
+  cpf: string;
+  email: string;
+  phone: string;
+  zipCode: string;
+  street: string;
+  number: string;
+  complement?: string;
+  neighborhood: string;
+  city: string;
+  state: string;
+};
+
+function erroJson(error: string, status: number) {
+  return Response.json({ error }, { status });
+}
+
+function respostaPagamento(
+  paymentIntent: {
+    id: string;
+    client_secret: string | null;
+  },
+  orderId: string,
+  trackingToken: string
+) {
+  return Response.json({
+    paymentIntent: {
+      id: paymentIntent.id,
+      client_secret: paymentIntent.client_secret,
+    },
+    orderId,
+    trackingToken,
+  });
+}
+
+function validarCPF(cpf: string) {
+  const numeros = cpf.replace(/\D/g, "");
+
+  if (numeros.length !== 11 || /^(\d)\1{10}$/.test(numeros)) {
+    return false;
+  }
+
+  for (let tamanho = 9; tamanho <= 10; tamanho++) {
+    let soma = 0;
+
+    for (let i = 0; i < tamanho; i++) {
+      soma += Number(numeros[i]) * (tamanho + 1 - i);
+    }
+
+    const resto = (soma * 10) % 11;
+    const digito = resto === 10 ? 0 : resto;
+
+    if (digito !== Number(numeros[tamanho])) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+function validarComprador(dados: DadosComprador) {
+  if (!dados || typeof dados !== "object" || Array.isArray(dados)) {
+    return "Dados do comprador inválidos.";
+  }
+
+  const camposObrigatorios: [string, unknown, number][] = [
+    ["Nome", dados.fullName, 120],
+    ["E-mail", dados.email, 254],
+    ["Telefone", dados.phone, 20],
+    ["CEP", dados.zipCode, 9],
+    ["Rua", dados.street, 120],
+    ["Número", dados.number, 20],
+    ["Bairro", dados.neighborhood, 100],
+    ["Cidade", dados.city, 100],
+    ["Estado", dados.state, 2],
+  ];
+
+  for (const [nome, valor, limite] of camposObrigatorios) {
+    if (
+      typeof valor !== "string" ||
+      !valor.trim() ||
+      valor.length > limite
+    ) {
+      return `${nome} inválido ou não informado.`;
+    }
+  }
+
+  if (
+    typeof dados.complement !== "undefined" &&
+    (typeof dados.complement !== "string" ||
+      dados.complement.length > 100)
+  ) {
+    return "Complemento inválido.";
+  }
+
+  if (
+    typeof dados.cpf !== "undefined" &&
+    typeof dados.cpf !== "string"
+  ) {
+    return "CPF inválido.";
+  }
+
+  const cpf = dados.cpf ?? "";
+
+  if (cpf.trim() && !validarCPF(cpf)) {
+    return "Informe um CPF válido.";
+  }
+
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(dados.email.trim())) {
+    return "Informe um e-mail válido.";
+  }
+
+  const telefone = dados.phone.replace(/\D/g, "");
+
+  if (telefone.length < 10 || telefone.length > 13) {
+    return "Informe um telefone válido.";
+  }
+
+  if (dados.zipCode.replace(/\D/g, "").length !== 8) {
+    return "Informe um CEP válido.";
+  }
+
+  if (!/^[A-Za-z]{2}$/.test(dados.state.trim())) {
+    return "Informe uma UF válida.";
+  }
+
+  const cidade = dados.city
+    .trim()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+
+  if (
+    dados.state.trim().toUpperCase() !== "MS" ||
+    !["dourados", "maracaju"].includes(cidade)
+  ) {
+    return "Entrega disponível apenas para Dourados/MS e Maracaju/MS.";
+  }
+  return null;
+}
+
+

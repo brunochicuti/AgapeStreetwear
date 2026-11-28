@@ -1,0 +1,1990 @@
+﻿===== create-payment-intent (linhas 158 a 290) =====
+}
+
+
+async function validarCepEntrega(
+  dados: DadosComprador
+): Promise<string | null> {
+  const cep = dados.zipCode.replace(/\D/g, "");
+
+  try {
+    const response = await fetch(
+      `https://viacep.com.br/ws/${cep}/json/`,
+      {
+        signal: AbortSignal.timeout(5000),
+        cache: "no-store",
+        headers: {
+          Accept: "application/json",
+        },
+      }
+    );
+
+    if (!response.ok) {
+      return "Não foi possível validar o CEP. Tente novamente.";
+    }
+
+    const resultado: unknown = await response.json();
+
+    if (
+      !resultado ||
+      typeof resultado !== "object" ||
+      Array.isArray(resultado)
+    ) {
+      return "Não foi possível validar o CEP. Tente novamente.";
+    }
+
+    const endereco = resultado as Record<string, unknown>;
+
+    if (endereco.erro === true) {
+      return "CEP não encontrado.";
+    }
+
+    if (
+      typeof endereco.cep !== "string" ||
+      typeof endereco.localidade !== "string" ||
+      typeof endereco.uf !== "string"
+    ) {
+      return "Não foi possível validar o CEP. Tente novamente.";
+    }
+
+    if (endereco.cep.replace(/\D/g, "") !== cep) {
+      return "Não foi possível confirmar o CEP informado.";
+    }
+
+    const normalizar = (valor: string) =>
+      valor
+        .trim()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .toLowerCase();
+
+    const cidadeCep = normalizar(endereco.localidade);
+    const cidadeComprador = normalizar(dados.city);
+    const ufCep = endereco.uf.trim().toUpperCase();
+    const ufComprador = dados.state.trim().toUpperCase();
+
+    if (
+      ufCep !== "MS" ||
+      !["dourados", "maracaju"].includes(cidadeCep)
+    ) {
+      return "Entrega disponível apenas para Dourados/MS e Maracaju/MS.";
+    }
+
+    if (cidadeComprador !== cidadeCep || ufComprador !== ufCep) {
+      return "A cidade ou o estado informado não corresponde ao CEP.";
+    }
+
+    return null;
+  } catch {
+    return "Não foi possível validar o CEP. Tente novamente.";
+  }
+}
+
+
+function validarCheckoutKey(valor: unknown): valor is string {
+  return (
+    typeof valor === "string" &&
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+      valor
+    )
+  );
+}
+
+export async function POST(req: Request) {
+  try {
+    const { userId } = await auth();
+
+    if (!userId) {
+      return erroJson("Não autenticado.", 401);
+    }
+
+    const limite = await verificarRateLimitCheckout(req, userId);
+
+    if (!limite.allowed) {
+      return Response.json(
+        { error: "Muitas tentativas de checkout. Aguarde antes de tentar novamente." },
+        {
+          status: 429,
+          headers: {
+            "Retry-After": String(limite.retryAfterSeconds),
+          },
+        }
+      );
+    }
+
+    const contentLength = req.headers.get("content-length");
+
+    if (contentLength !== null) {
+      const tamanho = Number(contentLength);
+
+      if (!Number.isSafeInteger(tamanho) || tamanho < 0 || tamanho > 16 * 1024) {
+        return erroJson("Requisição muito grande ou inválida.", 413);
+      }
+    }
+
+    let body: Record<string, unknown>;
+
+    try {
+      const texto = await req.text();
+
+      if (new TextEncoder().encode(texto).length > 16 * 1024) {
+        return erroJson("Requisição muito grande.", 413);
+      }
+
+      const conteudo = JSON.parse(texto);
+===== src/lib/rate-limit.ts =====
+import { createHmac } from "node:crypto";
+import { isIP } from "node:net";
+import prisma from "@/src/lib/prisma";
+
+const JANELA_MS = 10 * 60 * 1000;
+const LIMITE_USUARIO = 5;
+const LIMITE_IP = 15;
+
+type ResultadoContagem = {
+  count: number;
+  windowStartedAt: Date;
+};
+
+function gerarChave(tipo: "user" | "ip", valor: string) {
+  const secret = process.env.RATE_LIMIT_SECRET;
+
+  if (!secret || Buffer.byteLength(secret) < 32) {
+    throw new Error("RATE_LIMIT_SECRET ausente ou inválida.");
+  }
+
+  const hash = createHmac("sha256", secret)
+    .update(`${tipo}:${valor}`)
+    .digest("hex");
+
+  return `${tipo}:${hash}`;
+}
+
+function obterIP(request: Request) {
+  const ip = request.headers.get("x-real-ip")?.trim();
+
+  if (ip && isIP(ip)) return ip;
+
+  if (process.env.NODE_ENV !== "production") {
+    return "127.0.0.1";
+  }
+
+  throw new Error("Nao foi possivel identificar o IP da requisicao.");
+}
+
+async function incrementarContador(key: string) {
+  const rows = await prisma.$queryRaw<ResultadoContagem[]>`
+    INSERT INTO "CheckoutRateLimit" ("key", "count", "windowStartedAt")
+    VALUES (${key}, 1, NOW())
+    ON CONFLICT ("key") DO UPDATE SET
+      "count" = CASE
+        WHEN "CheckoutRateLimit"."windowStartedAt"
+          <= NOW() - INTERVAL '10 minutes'
+        THEN 1
+        ELSE "CheckoutRateLimit"."count" + 1
+      END,
+      "windowStartedAt" = CASE
+        WHEN "CheckoutRateLimit"."windowStartedAt"
+          <= NOW() - INTERVAL '10 minutes'
+        THEN NOW()
+        ELSE "CheckoutRateLimit"."windowStartedAt"
+      END
+    RETURNING "count", "windowStartedAt"
+  `;
+
+  if (!rows[0]) {
+    throw new Error("Não foi possível atualizar o contador.");
+  }
+
+  return rows[0];
+}
+
+function calcularEspera(inicio: Date) {
+  return Math.max(
+    1,
+    Math.ceil((inicio.getTime() + JANELA_MS - Date.now()) / 1000)
+  );
+}
+
+export async function verificarRateLimitCheckout(
+  request: Request,
+  userId: string
+) {
+  const ip = obterIP(request);
+
+  const chaveUsuario = gerarChave("user", userId);
+  const chaveIP = gerarChave("ip", ip);
+
+  const usuario = await incrementarContador(chaveUsuario);
+  const endereco = await incrementarContador(chaveIP);
+
+  if (Math.random() < 0.01) {
+    try {
+      await prisma.$executeRaw`
+        DELETE FROM "CheckoutRateLimit"
+        WHERE "windowStartedAt" < NOW() - INTERVAL '1 day'
+      `;
+    } catch {
+      // A limpeza é secundária; a contagem já foi registrada.
+    }
+  }
+
+  const bloqueios = [];
+
+  if (usuario.count > LIMITE_USUARIO) {
+    bloqueios.push(calcularEspera(usuario.windowStartedAt));
+  }
+
+  if (endereco.count > LIMITE_IP) {
+    bloqueios.push(calcularEspera(endereco.windowStartedAt));
+  }
+
+  return {
+    allowed: bloqueios.length === 0,
+    retryAfterSeconds: bloqueios.length
+      ? Math.max(...bloqueios)
+      : 0,
+  };
+}
+===== src/lib/registrar-notificacoes-pedido.ts =====
+import { Prisma } from "@prisma/client";
+
+export async function registrarNotificacoesPedido(
+  tx: Prisma.TransactionClient,
+  orderId: string
+) {
+  await tx.emailNotification.createMany({
+    data: {
+      orderId,
+      eventType: "payment_approved",
+      status: "pending",
+    },
+    skipDuplicates: true,
+  });
+
+  await tx.whatsAppNotification.createMany({
+    data: {
+      orderId,
+      eventType: "payment_approved",
+      status: "pending",
+    },
+    skipDuplicates: true,
+  });
+}
+===== src/app/api/admin/pedidos/route.ts =====
+
+import { connection } from "next/server";
+import prisma from "@/src/lib/prisma";
+import { verificarAdmin } from "@/src/lib/admin";
+
+export async function GET() {
+  await connection();
+
+  try {
+    if (!(await verificarAdmin())) {
+      return Response.json(
+        { error: "Acesso não autorizado." },
+        { status: 403 }
+      );
+    }
+
+    const orders = await prisma.order.findMany({
+      orderBy: {
+        createdDate: "desc",
+      },
+      select: {
+        id: true,
+        status: true,
+        fulfillmentStatus: true,
+        subtotal: true,
+        shippingCost: true,
+        amount: true,
+        currency: true,
+        createdDate: true,
+        fullName: true,
+        email: true,
+        phone: true,
+        zipCode: true,
+        street: true,
+        number: true,
+        complement: true,
+        neighborhood: true,
+        city: true,
+        state: true,
+        items: {
+          select: {
+            id: true,
+            name: true,
+            quantity: true,
+            unitPrice: true,
+            image: true,
+            color: true,
+            size: true,
+          },
+        },
+        statusHistory: {
+          orderBy: {
+            createdAt: "asc",
+          },
+          select: {
+            fromStatus: true,
+            toStatus: true,
+            source: true,
+            createdAt: true,
+          },
+        },
+      },
+    });
+
+    return Response.json(
+      { orders },
+      {
+        headers: {
+          "Cache-Control": "no-store, private",
+        },
+      }
+    );
+  } catch (error) {
+    console.error("Erro ao consultar pedidos administrativos:", error);
+
+    return Response.json(
+      { error: "Não foi possível consultar os pedidos." },
+      { status: 500 }
+    );
+  }
+}
+===== src/app/api/admin/produtos/route.ts =====
+
+import { connection } from "next/server";
+import { stripe } from "@/src/lib/stripe";
+import { verificarAdmin } from "@/src/lib/admin";
+
+export async function GET() {
+  await connection();
+
+  try {
+    if (!(await verificarAdmin())) {
+      return Response.json(
+        { error: "Acesso não autorizado." },
+        { status: 403 }
+      );
+    }
+
+    const produtos = [];
+    let startingAfter: string | undefined;
+
+    while (true) {
+      const pagina = await stripe.products.list({
+        active: undefined,
+        limit: 100,
+        ...(startingAfter ? { starting_after: startingAfter } : {}),
+      });
+
+      produtos.push(
+        ...pagina.data.map((produto) => ({
+          id: produto.id,
+          name: produto.name,
+          image: produto.images[0] || "",
+        }))
+      );
+
+      if (!pagina.has_more || pagina.data.length === 0) {
+        break;
+      }
+
+      startingAfter = pagina.data[pagina.data.length - 1].id;
+    }
+
+    return Response.json(
+      { products: produtos },
+      {
+        headers: {
+          "Cache-Control": "no-store, private",
+        },
+      }
+    );
+  } catch (error) {
+    console.error("Erro ao consultar produtos administrativos:", error);
+
+    return Response.json(
+      { error: "Não foi possível consultar os produtos." },
+      { status: 500 }
+    );
+  }
+}
+===== src/app/api/admin/solicitacoes-privacidade/route.ts =====
+
+import { auth } from "@clerk/nextjs/server";
+import { connection } from "next/server";
+import prisma from "@/src/lib/prisma";
+import { verificarAdmin } from "@/src/lib/admin";
+
+const statusPermitidos = [
+  "PENDENTE",
+  "EM_ANALISE",
+  "CONCLUIDA",
+  "PARCIAL",
+  "INDEFERIDA",
+] as const;
+
+const statusFinais = ["CONCLUIDA", "PARCIAL", "INDEFERIDA"];
+
+const tiposPermitidos = [
+  "ACESSO",
+  "CORRECAO",
+  "EXCLUSAO",
+  "ANONIMIZACAO",
+  "BLOQUEIO",
+  "PORTABILIDADE",
+  "INFORMACOES_COMPARTILHAMENTO",
+  "REVOGACAO_CONSENTIMENTO",
+  "OUTRO",
+];
+
+const fontesPermitidas = ["EMAIL", "WHATSAPP", "OUTRO"];
+
+
+export async function POST(request: Request) {
+  await connection();
+
+  try {
+    if (!(await verificarAdmin())) {
+      return Response.json(
+        { error: "Acesso não autorizado." },
+        { status: 403 }
+      );
+    }
+
+    let body: Record<string, unknown>;
+
+    try {
+      body = await request.json();
+    } catch {
+      return Response.json(
+        { error: "Corpo da requisição inválido." },
+        { status: 400 }
+      );
+    }
+
+    const nome =
+      typeof body.requesterName === "string"
+        ? body.requesterName.trim()
+        : "";
+
+    const email =
+      typeof body.requesterEmail === "string"
+        ? body.requesterEmail.trim().toLowerCase()
+        : "";
+
+    const descricao =
+      typeof body.description === "string"
+        ? body.description.trim()
+        : "";
+
+    const tipo = body.type;
+    const fonte = body.source;
+
+    if (
+      !nome ||
+      nome.length > 120 ||
+      !email ||
+      email.length > 254 ||
+      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ||
+      !descricao ||
+      descricao.length > 3000 ||
+      typeof tipo !== "string" ||
+      !tiposPermitidos.includes(tipo) ||
+      typeof fonte !== "string" ||
+      !fontesPermitidas.includes(fonte)
+    ) {
+      return Response.json(
+        { error: "Confira os dados informados. Há campos inválidos ou ausentes." },
+        { status: 400 }
+      );
+    }
+
+    const solicitacao = await prisma.privacyRequest.create({
+      data: {
+        requesterName: nome,
+        requesterEmail: email,
+        description: descricao,
+        type: tipo,
+        source: fonte,
+      },
+      select: {
+        id: true,
+        requesterName: true,
+        requesterEmail: true,
+        description: true,
+        type: true,
+        source: true,
+        status: true,
+        receivedAt: true,
+      },
+    });
+
+    return Response.json(
+      { success: true, solicitacao },
+      { status: 201 }
+    );
+  } catch (error) {
+    console.error("Erro ao cadastrar solicitação de privacidade:", error);
+
+    return Response.json(
+      { error: "Não foi possível cadastrar a solicitação." },
+      { status: 500 }
+    );
+  }
+}
+
+
+export async function GET() {
+  await connection();
+
+  try {
+    if (!(await verificarAdmin())) {
+      return Response.json(
+        { error: "Acesso não autorizado." },
+        { status: 403 }
+      );
+    }
+
+    const solicitacoes = await prisma.privacyRequest.findMany({
+      orderBy: { receivedAt: "desc" },
+      take: 100,
+      select: {
+        id: true,
+        userId: true,
+        type: true,
+        source: true,
+        requesterName: true,
+        requesterEmail: true,
+        description: true,
+        status: true,
+        receivedAt: true,
+        completedAt: true,
+        decision: true,
+        justification: true,
+        processedBy: true,
+        user: {
+          select: {
+            deletionRequestedAt: true,
+          },
+        },
+      },
+    });
+
+    return Response.json({ solicitacoes });
+  } catch (error) {
+    console.error("Erro ao consultar solicitações de privacidade:", error);
+
+    return Response.json(
+      { error: "Não foi possível consultar as solicitações." },
+      { status: 500 }
+    );
+  }
+}
+
+export async function PATCH(request: Request) {
+  await connection();
+
+  try {
+    if (!(await verificarAdmin())) {
+      return Response.json(
+        { error: "Acesso não autorizado." },
+        { status: 403 }
+      );
+    }
+
+    const { userId } = await auth();
+
+    if (!userId) {
+      return Response.json(
+        { error: "Usuário não autenticado." },
+        { status: 401 }
+      );
+    }
+
+    const body = await request.json();
+
+    const id = body.id;
+    const novoStatus = body.status;
+    const decisao = body.decision;
+    const justificativa = body.justification;
+
+    if (
+      typeof id !== "string" ||
+      !id.trim() ||
+      typeof novoStatus !== "string" ||
+      !statusPermitidos.includes(
+        novoStatus as (typeof statusPermitidos)[number]
+      )
+    ) {
+      return Response.json(
+        { error: "Dados inválidos." },
+        { status: 400 }
+      );
+    }
+
+    if (
+      statusFinais.includes(novoStatus) &&
+      (
+        typeof decisao !== "string" ||
+        !decisao.trim() ||
+        typeof justificativa !== "string" ||
+        !justificativa.trim()
+      )
+    ) {
+      return Response.json(
+        {
+          error:
+            "Informe a decisão e a justificativa para concluir a solicitação.",
+        },
+        { status: 400 }
+      );
+    }
+
+    const solicitacao = await prisma.privacyRequest.findUnique({
+      where: { id },
+      select: { id: true, status: true },
+    });
+
+    if (!solicitacao) {
+      return Response.json(
+        { error: "Solicitação não encontrada." },
+        { status: 404 }
+      );
+    }
+
+    const transicoesPermitidas: Record<string, string[]> = {
+      PENDENTE: ["EM_ANALISE"],
+      EM_ANALISE: ["CONCLUIDA", "PARCIAL", "INDEFERIDA"],
+    };
+
+    if (!transicoesPermitidas[solicitacao.status]?.includes(novoStatus)) {
+      return Response.json(
+        { error: "Transição de status não permitida." },
+        { status: 409 }
+      );
+    }
+
+    const resultado = await prisma.privacyRequest.updateMany({
+      where: {
+        id,
+        status: solicitacao.status,
+      },
+      data: {
+        status: novoStatus,
+        decision:
+          typeof decisao === "string" ? decisao.trim() : null,
+        justification:
+          typeof justificativa === "string"
+            ? justificativa.trim()
+            : null,
+        processedBy: userId,
+        completedAt: statusFinais.includes(novoStatus)
+          ? new Date()
+          : null,
+      },
+    });
+
+    if (resultado.count === 0) {
+      return Response.json(
+        {
+          error:
+            "A solicitação foi alterada por outra operação. Atualize a página.",
+        },
+        { status: 409 }
+      );
+    }
+
+    return Response.json({
+      success: true,
+      status: novoStatus,
+    });
+  } catch (error) {
+    console.error("Erro ao atualizar solicitação de privacidade:", error);
+
+    return Response.json(
+      { error: "Não foi possível atualizar a solicitação." },
+      { status: 500 }
+    );
+  }
+}
+===== src/app/api/pedido-confirmado/route.ts =====
+
+import { auth } from "@clerk/nextjs/server";
+import prisma from "@/src/lib/prisma";
+import { stripe } from "@/src/lib/stripe";
+import { processarNotificacaoEmail } from "@/src/lib/notificacoes-email";
+import { registrarNotificacoesPedido } from "@/src/lib/registrar-notificacoes-pedido";
+
+function respostaJson(
+  dados: unknown,
+  opcoes: { status?: number } = {}
+) {
+  return Response.json(dados, {
+    ...opcoes,
+    headers: {
+      "Cache-Control": "no-store, private",
+      "Referrer-Policy": "no-referrer",
+      "X-Content-Type-Options": "nosniff",
+    },
+  });
+}
+
+export async function GET(req: Request) {
+  try {
+    const { searchParams } = new URL(req.url);
+    const paymentIntentId = searchParams.get("payment_intent_id");
+
+    if (!paymentIntentId) {
+      return respostaJson(
+        { error: "IdentificaÃ§Ã£o do pagamento ausente." },
+        { status: 400 }
+      );
+    }
+
+    const { userId } = await auth();
+
+    if (!userId) {
+      return respostaJson(
+        { error: "NÃ£o autenticado." },
+        { status: 401 }
+      );
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { externalId: userId },
+    });
+
+    if (!user) {
+      return respostaJson(
+        { error: "UsuÃ¡rio nÃ£o encontrado." },
+        { status: 404 }
+      );
+    }
+
+    const order = await prisma.order.findFirst({
+      where: {
+        paymentIntentID: paymentIntentId,
+        userId: user.id,
+      },
+      include: {
+        items: {
+          select: {
+            id: true,
+            name: true,
+            quantity: true,
+            unitPrice: true,
+            color: true,
+            size: true,
+          },
+        },
+      },
+    });
+
+    if (!order) {
+      return respostaJson(
+        { error: "Pedido nÃ£o encontrado." },
+        { status: 404 }
+      );
+    }
+
+    const paymentIntent =
+      await stripe.paymentIntents.retrieve(paymentIntentId);
+
+// Confere se todos os metadados da Stripe correspondem ao pedido.
+    if (
+      !paymentIntent.metadata.orderId ||
+      paymentIntent.metadata.orderId !== order.id ||
+      !paymentIntent.metadata.userId ||
+      paymentIntent.metadata.userId !== userId ||
+      !paymentIntent.metadata.checkoutKey ||
+      !order.checkoutKey ||
+      paymentIntent.metadata.checkoutKey !== order.checkoutKey
+    ) {
+      console.error(
+        "Metadados do PaymentIntent ausentes ou divergentes:",
+        order.id
+      );
+
+      return respostaJson(
+        { error: "NÃ£o foi possÃ­vel validar o pagamento." },
+        { status: 409 }
+      );
+    }
+
+    // Confere valor, moeda e recebimento efetivo.
+    const valorEsperado = Math.round(order.amount * 100);
+
+    const pagamentoValido =
+      paymentIntent.status === "succeeded" &&
+      paymentIntent.currency.toLowerCase() ===
+        order.currency.toLowerCase() &&
+      paymentIntent.amount === valorEsperado &&
+      paymentIntent.amount_received === valorEsperado;
+
+    if (paymentIntent.status === "succeeded" && !pagamentoValido) {
+      console.error("DivergÃªncia financeira na confirmaÃ§Ã£o:", {
+        orderId: order.id,
+        valorEsperado,
+        valorStripe: paymentIntent.amount,
+        valorRecebido: paymentIntent.amount_received,
+        moedaPedido: order.currency,
+        moedaStripe: paymentIntent.currency,
+      });
+
+      return respostaJson(
+        { error: "O pagamento precisa de verificaÃ§Ã£o." },
+        { status: 409 }
+      );
+    }
+
+    let statusPedido = order.status;
+
+    // SÃ³ aprova pedidos pendentes ou com tentativa anterior falha.
+if (pagamentoValido) {
+  const statusFinal = await prisma.$transaction(async (tx) => {
+    const pedidoAntes = await tx.order.findUnique({
+      where: { id: order.id },
+      select: { status: true },
+    });
+
+    if (!pedidoAntes) {
+      return null;
+    }
+
+    if (!["pending", "failed"].includes(pedidoAntes.status)) {
+      if (pedidoAntes.status === "paid") {
+        await registrarNotificacoesPedido(tx, order.id);
+
+        await tx.order.updateMany({
+          where: {
+            id: order.id,
+            fulfillmentStatus: "awaiting_payment",
+          },
+          data: {
+            fulfillmentStatus: "pending",
+          },
+        });
+      }
+
+      return pedidoAntes.status;
+    }
+
+    const pagamentoAtualizado = await tx.order.updateMany({
+      where: {
+        id: order.id,
+        status: pedidoAntes.status,
+      },
+      data: {
+        status: "paid",
+      },
+    });
+
+    if (pagamentoAtualizado.count > 0) {
+      await tx.order.updateMany({
+      where: {
+        id: order.id,
+        fulfillmentStatus: "awaiting_payment",
+      },
+      data: {
+        fulfillmentStatus: "pending",
+      },
+    });
+      await tx.orderStatusHistory.create({
+        data: {
+          orderId: order.id,
+          fromStatus: pedidoAntes.status,
+          toStatus: "paid",
+          source: "payment_confirmation",
+        },
+      });
+
+      await registrarNotificacoesPedido(tx, order.id);
+
+      return "paid";
+    }
+
+    const pedidoAtual = await tx.order.findUnique({
+      where: { id: order.id },
+      select: { status: true },
+    });
+
+    return pedidoAtual?.status ?? null;
+  });
+
+  if (!statusFinal) {
+    throw new Error("Pedido não encontrado após validar o pagamento.");
+  }
+
+  statusPedido = statusFinal;
+
+  if (statusPedido === "paid") {
+    await processarNotificacaoEmail(
+      order.id,
+      "payment_approved"
+    );
+  }
+
+  if (
+    statusPedido === "canceled" ||
+    statusPedido === "review_required"
+  ) {
+    console.error(
+      "Pagamento confirmado exige revisão manual:",
+      order.id,
+      "Status atual:",
+      statusPedido
+    );
+  }
+}
+
+    return respostaJson({
+      order: {
+        id: order.id,
+        status: statusPedido,
+        subtotal: order.subtotal,
+        shippingCost: order.shippingCost,
+        amount: order.amount,
+        currency: order.currency,
+        products: order.items.map((item) => ({
+        id: item.id,
+        name: item.name,
+        quantity: item.quantity,
+        price: item.unitPrice,
+        color: item.color,
+        size: item.size,
+      })),
+      },
+      paymentStatus: paymentIntent.status,
+    });
+  } catch (error) {
+    if (
+      error &&
+      typeof error === "object" &&
+      "digest" in error &&
+      error.digest === "NEXT_PRERENDER_INTERRUPTED"
+    ) {
+      throw error;
+    }
+
+    console.error("Erro ao consultar pedido:", error);
+
+    return respostaJson(
+      { error: "NÃ£o foi possÃ­vel consultar o pedido." },
+      { status: 500 }
+    );
+  }
+}
+===== src/app/api/registrar-metodo-pagamento/route.ts =====
+
+import { auth } from "@clerk/nextjs/server";
+import { NextResponse } from "next/server";
+import prisma from "@/src/lib/prisma";
+import { stripe } from "@/src/lib/stripe";
+
+function erroJson(error: string, status: number) {
+  return NextResponse.json({ error }, { status });
+}
+
+export async function POST(request: Request) {
+  try {
+    // Confirma a autenticação do cliente.
+    const { userId } = await auth();
+
+    if (!userId) {
+      return erroJson("Não autenticado.", 401);
+    }
+
+    // Limita o tamanho da requisição.
+    const contentLength = request.headers.get("content-length");
+
+    if (contentLength && Number(contentLength) > 2048) {
+      return erroJson("Requisição muito grande.", 413);
+    }
+
+    let body: unknown;
+
+    try {
+      const texto = await request.text();
+
+      if (new TextEncoder().encode(texto).length > 2048) {
+        return erroJson("Requisição muito grande.", 413);
+      }
+
+      body = JSON.parse(texto);
+    } catch {
+      return erroJson("Requisição inválida.", 400);
+    }
+
+    if (
+      !body ||
+      typeof body !== "object" ||
+      Array.isArray(body)
+    ) {
+      return erroJson("Dados inválidos.", 400);
+    }
+
+    const dados = body as Record<string, unknown>;
+    const paymentIntentId = dados.paymentIntentId;
+    const paymentMethod = dados.paymentMethod;
+
+    if (
+      typeof paymentIntentId !== "string" ||
+      !/^pi_[a-zA-Z0-9]+$/.test(paymentIntentId)
+    ) {
+      return erroJson("Identificação do pagamento inválida.", 400);
+    }
+
+    if (!["pix", "card"].includes(String(paymentMethod))) {
+      return erroJson("Método de pagamento inválido.", 400);
+    }
+
+    // Localiza a conta interna correspondente ao usuário autenticado.
+    const user = await prisma.user.findUnique({
+      where: {
+        externalId: userId,
+      },
+      select: {
+        id: true,
+        deletionRequestedAt: true,
+      },
+    });
+
+    if (!user || user.deletionRequestedAt) {
+      return erroJson("Usuário não autorizado.", 403);
+    }
+
+    // Consulta o pagamento diretamente na Stripe.
+    const paymentIntent =
+      await stripe.paymentIntents.retrieve(paymentIntentId);
+
+    if (
+      paymentIntent.metadata.userId !== userId ||
+      !paymentIntent.metadata.orderId ||
+      paymentIntent.status !== "requires_payment_method" ||
+      paymentIntent.currency !== "brl"
+    ) {
+      return erroJson(
+        "Não foi possível validar o pagamento.",
+        409
+      );
+    }
+
+    // Confirma que o pagamento pertence ao pedido e ao usuário.
+    const order = await prisma.order.findFirst({
+      where: {
+        id: paymentIntent.metadata.orderId,
+        userId: user.id,
+        paymentIntentID: paymentIntent.id,
+        status: {
+          in: ["pending", "failed"],
+        },
+        paymentReminderSentAt: null,
+      },
+      select: {
+        id: true,
+        amount: true,
+      },
+    });
+
+    if (!order) {
+      return erroJson(
+        "Pedido não encontrado ou não disponível para atualização.",
+        409
+      );
+    }
+
+    // Confere o valor antes de atualizar o método.
+    if (Math.round(order.amount * 100) !== paymentIntent.amount) {
+      return erroJson(
+        "O valor do pagamento não corresponde ao pedido.",
+        409
+      );
+    }
+
+    const atualizado = await prisma.order.updateMany({
+      where: {
+        id: order.id,
+        userId: user.id,
+        paymentIntentID: paymentIntent.id,
+        status: {
+          in: ["pending", "failed"],
+        },
+        paymentReminderSentAt: null,
+      },
+      data: {
+        paymentMethod: paymentMethod as string,
+      },
+    });
+
+    if (atualizado.count !== 1) {
+      return erroJson(
+        "Não foi possível atualizar o método de pagamento.",
+        409
+      );
+    }
+
+    return NextResponse.json({
+      success: true,
+    });
+  } catch (error) {
+    console.error(
+      "Erro ao registrar método de pagamento:",
+      error
+    );
+
+    return erroJson(
+      "Não foi possível registrar o método de pagamento.",
+      500
+    );
+  }
+}
+===== src/app/api/recuperar-pagamento/route.ts =====
+
+import { createHash } from "node:crypto";
+import { connection, NextResponse } from "next/server";
+import prisma from "@/src/lib/prisma";
+import { stripe } from "@/src/lib/stripe";
+import { obterTokenAcompanhamento } from "@/src/lib/tracking";
+
+function respostaJson(
+  dados: unknown,
+  status = 200
+) {
+  return NextResponse.json(dados, {
+    status,
+    headers: {
+      "Cache-Control": "no-store, private",
+      "Referrer-Policy": "no-referrer",
+      "X-Content-Type-Options": "nosniff",
+    },
+  });
+}
+
+function gerarHashToken(token: string) {
+  return createHash("sha256")
+    .update(token)
+    .digest("hex");
+}
+
+export async function GET(request: Request) {
+  await connection();
+
+  try {
+    const url = new URL(request.url);
+    const token = url.searchParams.get("token");
+
+    if (
+      !token ||
+      token.length !== 43 ||
+      !/^[A-Za-z0-9_-]+$/.test(token)
+    ) {
+      return respostaJson(
+        { error: "Link de recuperação inválido ou expirado." },
+        404
+      );
+    }
+
+    const tokenHash = gerarHashToken(token);
+
+    const pedido = await prisma.order.findUnique({
+      where: {
+        paymentRecoveryTokenHash: tokenHash,
+      },
+      select: {
+        id: true,
+        userId: true,
+        status: true,
+        currency: true,
+        subtotal: true,
+        shippingCost: true,
+        amount: true,
+        fullName: true,
+        cpf: true,
+        email: true,
+        phone: true,
+        zipCode: true,
+        street: true,
+        number: true,
+        complement: true,
+        neighborhood: true,
+        city: true,
+        state: true,
+        paymentIntentID: true,
+        paymentMethod: true,
+        paymentRecoveryExpiresAt: true,
+        paymentReminderSentAt: true,
+        items: {
+          select: {
+            id: true,
+            name: true,
+            quantity: true,
+            unitPrice: true,
+            image: true,
+            color: true,
+            size: true,
+          },
+        },
+      },
+    });
+
+    if (
+      !pedido ||
+      !pedido.paymentReminderSentAt ||
+      !pedido.paymentRecoveryExpiresAt ||
+      pedido.paymentRecoveryExpiresAt <= new Date() ||
+      !["pending", "failed"].includes(pedido.status)
+    ) {
+      return respostaJson(
+        { error: "Link de recuperação inválido ou expirado." },
+        404
+      );
+    }
+
+
+const pagamento = pedido.paymentIntentID
+  ? await stripe.paymentIntents.retrieve(
+      pedido.paymentIntentID
+    )
+  : null;
+
+const usuarioDoPedido = pedido.userId
+  ? await prisma.user.findUnique({
+      where: {
+        id: pedido.userId,
+      },
+      select: {
+        externalId: true,
+      },
+    })
+  : null;
+
+if (!usuarioDoPedido) {
+  return respostaJson(
+    { error: "Não foi possível validar o comprador deste pedido." },
+    400
+  );
+}
+
+if (
+  pagamento &&
+  (
+    pagamento.metadata.orderId !== pedido.id ||
+    usuarioDoPedido.externalId !== pagamento.metadata.userId ||
+    pagamento.amount !== Math.round(pedido.amount * 100) ||
+    pagamento.currency !== pedido.currency.toLowerCase()
+  )
+) {
+  return respostaJson(
+    { error: "Não foi possível validar o pagamento deste pedido." },
+    400
+  );
+}
+
+if (pagamento?.status === "succeeded") {
+  return respostaJson({
+    status: "already_paid",
+    message: "Este pedido já foi pago.",
+  });
+}
+
+if (pagamento?.status === "processing") {
+  return respostaJson({
+    status: "processing",
+    message: "O pagamento está sendo processado.",
+  });
+}
+
+const dadosRecuperacao = {
+  trackingToken: await obterTokenAcompanhamento(pedido.id),
+  buyer: {
+    fullName: pedido.fullName ?? "",
+    cpf: pedido.cpf ?? "",
+    email: pedido.email ?? "",
+    phone: pedido.phone ?? "",
+    zipCode: pedido.zipCode ?? "",
+    street: pedido.street ?? "",
+    number: pedido.number ?? "",
+    complement: pedido.complement ?? "",
+    neighborhood: pedido.neighborhood ?? "",
+    city: pedido.city ?? "",
+    state: pedido.state ?? "",
+  },
+  order: {
+    id: pedido.id,
+    subtotal: pedido.subtotal,
+    shippingCost: pedido.shippingCost,
+    amount: pedido.amount,
+    currency: pedido.currency,
+    items: pedido.items,
+  },
+};
+
+// Cobrança inexistente ou cancelada precisa ser substituída.
+if (!pagamento || pagamento.status === "canceled") {
+  return respostaJson({
+    status: "replacement_required",
+    ...dadosRecuperacao,
+  });
+}
+
+if (
+  !["requires_payment_method", "requires_action"].includes(
+    pagamento.status
+  ) ||
+  !pagamento.client_secret
+) {
+  return respostaJson(
+    { error: "Este pagamento não pode ser recuperado por este link." },
+    409
+  );
+}
+
+const expiracaoPix =
+  pagamento.next_action?.type === "pix_display_qr_code"
+    ? pagamento.next_action.pix_display_qr_code?.expires_at
+    : undefined;
+
+if (
+  expiracaoPix !== undefined &&
+  expiracaoPix <= Math.floor(Date.now() / 1000)
+) {
+  return respostaJson({
+    status: "replacement_required",
+    ...dadosRecuperacao,
+  });
+}
+
+return respostaJson({
+  status: "recoverable",
+  paymentIntentId: pagamento.id,
+  clientSecret: pagamento.client_secret,
+  paymentMethod: pedido.paymentMethod,
+  ...dadosRecuperacao,
+});
+
+  } catch (error) {
+    console.error("Erro ao recuperar pagamento:", error);
+
+    return respostaJson(
+      { error: "Não foi possível recuperar o pagamento agora." },
+      500
+    );
+  }
+}
+===== src/app/api/recuperar-pagamento/metodo/route.ts =====
+
+import { createHash } from "node:crypto";
+import { NextResponse } from "next/server";
+import prisma from "@/src/lib/prisma";
+import { stripe } from "@/src/lib/stripe";
+
+function respostaJson(
+  dados: unknown,
+  status = 200
+) {
+  return NextResponse.json(dados, {
+    status,
+    headers: {
+      "Cache-Control": "no-store, private",
+      "Referrer-Policy": "no-referrer",
+      "X-Content-Type-Options": "nosniff",
+    },
+  });
+}
+
+function gerarHashToken(token: string) {
+  return createHash("sha256")
+    .update(token)
+    .digest("hex");
+}
+
+export async function POST(request: Request) {
+  try {
+    const contentLength = request.headers.get("content-length");
+
+    if (contentLength && Number(contentLength) > 2048) {
+      return respostaJson(
+        { error: "Requisição muito grande." },
+        413
+      );
+    }
+
+    let body: unknown;
+
+    try {
+      const texto = await request.text();
+
+      if (new TextEncoder().encode(texto).length > 2048) {
+        return respostaJson(
+          { error: "Requisição muito grande." },
+          413
+        );
+      }
+
+      body = JSON.parse(texto);
+    } catch {
+      return respostaJson(
+        { error: "Requisição inválida." },
+        400
+      );
+    }
+
+    if (
+      !body ||
+      typeof body !== "object" ||
+      Array.isArray(body)
+    ) {
+      return respostaJson(
+        { error: "Dados inválidos." },
+        400
+      );
+    }
+
+    const dados = body as Record<string, unknown>;
+    const token = dados.token;
+    const paymentMethod = dados.paymentMethod;
+
+    if (
+      typeof token !== "string" ||
+      token.length !== 43 ||
+      !/^[A-Za-z0-9_-]+$/.test(token)
+    ) {
+      return respostaJson(
+        { error: "Link de recuperação inválido ou expirado." },
+        404
+      );
+    }
+
+    if (!["pix", "card"].includes(String(paymentMethod))) {
+      return respostaJson(
+        { error: "Método de pagamento inválido." },
+        400
+      );
+    }
+
+    const tokenHash = gerarHashToken(token);
+    const agora = new Date();
+
+    const pedido = await prisma.order.findUnique({
+      where: {
+        paymentRecoveryTokenHash: tokenHash,
+      },
+      select: {
+        id: true,
+        userId: true,
+        status: true,
+        amount: true,
+        currency: true,
+        paymentIntentID: true,
+        paymentMethod: true,
+        paymentReminderSentAt: true,
+        paymentRecoveryExpiresAt: true,
+      },
+    });
+
+    if (
+      !pedido ||
+      !pedido.userId ||
+      !pedido.paymentIntentID ||
+      !pedido.paymentReminderSentAt ||
+      !pedido.paymentRecoveryExpiresAt ||
+      pedido.paymentRecoveryExpiresAt <= agora ||
+      !["pending", "failed"].includes(pedido.status)
+    ) {
+      return respostaJson(
+        { error: "Link de recuperação inválido ou expirado." },
+        404
+      );
+    }
+
+    const usuario = await prisma.user.findUnique({
+      where: {
+        id: pedido.userId,
+      },
+      select: {
+        externalId: true,
+      },
+    });
+
+    if (!usuario) {
+      return respostaJson(
+        { error: "Não foi possível validar o pedido." },
+        409
+      );
+    }
+
+    const pagamento = await stripe.paymentIntents.retrieve(
+      pedido.paymentIntentID
+    );
+
+    if (
+      pagamento.metadata.orderId !== pedido.id ||
+      pagamento.metadata.userId !== usuario.externalId ||
+      pagamento.amount !== Math.round(pedido.amount * 100) ||
+      pagamento.currency !== pedido.currency.toLowerCase()
+    ) {
+      return respostaJson(
+        { error: "Não foi possível validar o pagamento." },
+        409
+      );
+    }
+
+    if (pagamento.status === "succeeded") {
+      return respostaJson(
+        { error: "Este pedido já foi pago." },
+        409
+      );
+    }
+
+    if (
+      pagamento.status === "processing" ||
+      pagamento.status === "canceled"
+    ) {
+      return respostaJson(
+        { error: "Este pagamento não pode ser alterado." },
+        409
+      );
+    }
+
+    if (
+      !["requires_payment_method", "requires_action"].includes(
+        pagamento.status
+      )
+    ) {
+      return respostaJson(
+        { error: "Este pagamento não pode ser alterado." },
+        409
+      );
+    }
+
+    // Quando a Stripe já iniciou uma ação de pagamento,
+    // só permitimos manter o método anteriormente registrado.
+    if (
+    pagamento.status === "requires_action" &&
+    pedido.paymentMethod !== paymentMethod
+    ) {
+    return respostaJson({
+        success: false,
+        replacementRequired: true,
+    });
+    }
+
+    const atualizado = await prisma.order.updateMany({
+      where: {
+        id: pedido.id,
+        paymentRecoveryTokenHash: tokenHash,
+        paymentRecoveryExpiresAt: {
+          gt: new Date(),
+        },
+        paymentReminderSentAt: {
+          not: null,
+        },
+        paymentIntentID: pagamento.id,
+        status: {
+          in: ["pending", "failed"],
+        },
+      },
+      data: {
+        paymentMethod: paymentMethod as string,
+      },
+    });
+
+    if (atualizado.count !== 1) {
+      return respostaJson(
+        { error: "Não foi possível atualizar o método de pagamento." },
+        409
+      );
+    }
+
+    return respostaJson({
+      success: true,
+    });
+  } catch (error) {
+    console.error(
+      "Erro ao registrar método de recuperação:",
+      error
+    );
+
+    return respostaJson(
+      { error: "Não foi possível registrar o método de pagamento." },
+      500
+    );
+  }
+}
+===== src/app/api/recuperar-pagamento/preparar/route.ts =====
+import { createHash, randomUUID } from "node:crypto";
+import { NextResponse } from "next/server";
+import prisma from "@/src/lib/prisma";
+import { stripe } from "@/src/lib/stripe";
+
+export const maxDuration = 30;
+
+function respostaJson(
+  dados: unknown,
+  status = 200
+) {
+  return NextResponse.json(dados, {
+    status,
+    headers: {
+      "Cache-Control": "no-store, private",
+      "Referrer-Policy": "no-referrer",
+      "X-Content-Type-Options": "nosniff",
+    },
+  });
+}
+
+function gerarHashToken(token: string) {
+  return createHash("sha256")
+    .update(token)
+    .digest("hex");
+}
+
+
+function gerarChaveIdempotencia(
+  orderId: string,
+  paymentIntentId: string | null,
+  paymentMethod: "pix" | "card" | null
+) {
+  const identificador = createHash("sha256")
+    .update(
+    `${orderId}:${paymentIntentId ?? "sem-cobranca"}:${paymentMethod ?? "automatic"}`
+    )
+    .digest("hex");
+
+  return `recovery-${identificador}`;
+}
+
+
+export async function POST(request: Request) {
+  let orderId: string | null = null;
+  let lockId: string | null = null;
+
+  try {
+    const contentLength = request.headers.get("content-length");
+
+    if (contentLength && Number(contentLength) > 2048) {
+      return respostaJson(
+        { error: "Requisição muito grande." },
+        413
+      );
+    }
+
+    const texto = await request.text();
+
+    if (new TextEncoder().encode(texto).length > 2048) {
+      return respostaJson(
+        { error: "Requisição muito grande." },
+        413
+      );
+    }
+
+    let body: unknown;
+
+    try {
+      body = JSON.parse(texto);
+    } catch {
+      return respostaJson(
+        { error: "Requisição inválida." },
+        400
+      );
+    }
+
+    if (
+      !body ||
+      typeof body !== "object" ||
+      Array.isArray(body)
+    ) {
+      return respostaJson(
+        { error: "Dados inválidos." },
+        400
+      );
+    }
+
+    const dados = body as Record<string, unknown>;
+    const token = dados.token;
+    const paymentMethod = dados.paymentMethod;
+
+    if (
+    paymentMethod !== undefined &&
+    paymentMethod !== "pix" &&
+    paymentMethod !== "card"
+    ) {
+    return respostaJson(
+        { error: "Método de pagamento inválido." },
+        400
+    );
+    }
+    if (
+      typeof token !== "string" ||
+      token.length !== 43 ||
+      !/^[A-Za-z0-9_-]+$/.test(token)
+    ) {
+      return respostaJson(
+        { error: "Link de recuperação inválido ou expirado." },
+        404
+      );
+    }
+
+    const agora = new Date();
+    const tokenHash = gerarHashToken(token);
+
+    const pedido = await prisma.order.findUnique({
+      where: {
+        paymentRecoveryTokenHash: tokenHash,
+      },
+      select: {
+        id: true,
+        userId: true,
+        status: true,
+        amount: true,
+        currency: true,
+        checkoutKey: true,
+        paymentIntentID: true,
+        paymentRecoveryExpiresAt: true,
+        paymentReminderSentAt: true,
+      },
+    });
+
+    if (
+      !pedido ||
+      !pedido.userId ||
+      !pedido.checkoutKey ||
+      !pedido.paymentReminderSentAt ||
+      !pedido.paymentRecoveryExpiresAt ||
+      pedido.paymentRecoveryExpiresAt <= agora ||
+      !["pending", "failed"].includes(pedido.status)
+    ) {
+      return respostaJson(
+        { error: "Link de recuperação inválido ou expirado." },
+        404
+      );
+    }
+
+    orderId = pedido.id;
+    lockId = randomUUID();
+
+    const bloqueio = await prisma.order.updateMany({
+      where: {
+        id: pedido.id,
+        paymentRecoveryTokenHash: tokenHash,
+        paymentRecoveryExpiresAt: {
+          gt: agora,
+        },
+        status: {
+          in: ["pending", "failed"],
+        },
+        OR: [
+          { paymentRecoveryLockId: null },
+          { paymentRecoveryLockExpiresAt: null },
+          {
+            paymentRecoveryLockExpiresAt: {
+              lte: agora,
+            },
+          },
+        ],
+      },
+      data: {
+        paymentRecoveryLockId: lockId,
+        paymentRecoveryLockExpiresAt: new Date(
+          agora.getTime() + 2 * 60 * 1000
+        ),
+      },
+    });
+
+    if (bloqueio.count !== 1) {
+      return respostaJson(
+        {
+          error:
+            "Esta recuperação já está sendo processada. Aguarde um instante.",
+        },
+        409
+      );
+    }
+
+    
+    const usuario = await prisma.user.findUnique({
+      where: { id: pedido.userId },
+      select: { externalId: true },
+    });
+
+    if (!usuario) {
+      return respostaJson(
+        { error: "Não foi possível validar o comprador." },
+        409
+      );
+    }
+
+    let pagamentoAnterior = pedido.paymentIntentID
+      ? await stripe.paymentIntents.retrieve(
+          pedido.paymentIntentID
+        )
+      : null;
+
+    if (
+      pagamentoAnterior &&
+      (
+        pagamentoAnterior.metadata.orderId !== pedido.id ||
+        pagamentoAnterior.metadata.userId !== usuario.externalId ||
+        pagamentoAnterior.metadata.checkoutKey !== pedido.checkoutKey ||
+        pagamentoAnterior.amount !== Math.round(pedido.amount * 100) ||
+        pagamentoAnterior.currency !== pedido.currency.toLowerCase()
+      )
+    ) {
+      return respostaJson(
+        { error: "Não foi possível validar a cobrança anterior." },
+        409
+      );
+    }
+
+    if (
+      pagamentoAnterior?.status === "succeeded" ||
+      pagamentoAnterior?.status === "processing"
+    ) {
+      return respostaJson(
+        { error: "O pagamento já foi realizado ou está em processamento." },
+        409
+      );
+    }
+
+    if (
+      pagamentoAnterior &&
+      pagamentoAnterior.status !== "canceled"
+    ) {
+      const expiracaoPix =
+        pagamentoAnterior.next_action?.type === "pix_display_qr_code"
+          ? pagamentoAnterior.next_action.pix_display_qr_code?.expires_at
+          : undefined;
+
+      const pixExpirado =
+        expiracaoPix !== undefined &&
+        expiracaoPix <= Math.floor(Date.now() / 1000);
+
+        const podeSubstituirPorMetodo =
+        paymentMethod !== undefined &&
+        pagamentoAnterior.status === "requires_action";
+
+        if (!pixExpirado && !podeSubstituirPorMetodo) {
+        return respostaJson(
+            { error: "A cobrança anterior ainda pode ser utilizada." },
+            409
+        );
+        }
+
+      try {
+        await stripe.paymentIntents.cancel(
+          pagamentoAnterior.id
+        );
+      } catch {
+        const verificacao =
+          await stripe.paymentIntents.retrieve(
+            pagamentoAnterior.id
+          );
+
+        if (verificacao.status !== "canceled") {
+          return respostaJson(
+            { error: "Não foi possível encerrar a cobrança anterior." },
+            409
+          );
+        }
+      }
+    }
+
+const pagamentoNovo = await stripe.paymentIntents.create(
+  {
+    amount: Math.round(pedido.amount * 100),
+    currency: pedido.currency.toLowerCase(),
+
+    ...(paymentMethod
+      ? {
+          allowed_payment_method_types: [paymentMethod],
+        }
+      : {
+          automatic_payment_methods: {
+            enabled: true,
+          },
+        }),
+
+    metadata: {
+      userId: usuario.externalId,
+      orderId: pedido.id,
+      checkoutKey: pedido.checkoutKey,
+    },
+  },
+  {
+    idempotencyKey: gerarChaveIdempotencia(
+      pedido.id,
+      pedido.paymentIntentID,
+      paymentMethod ?? null
+    ),
+  }
+);
+
+    if (!pagamentoNovo.client_secret) {
+      throw new Error(
+        "A nova cobrança não retornou client_secret."
+      );
+    }
+
+    const atualizado = await prisma.order.updateMany({
+      where: {
+        id: pedido.id,
+        paymentRecoveryLockId: lockId,
+        paymentRecoveryTokenHash: tokenHash,
+        paymentRecoveryExpiresAt: {
+          gt: new Date(),
+        },
+        status: {
+          in: ["pending", "failed"],
+        },
+      },
+        data: {
+        paymentIntentID: pagamentoNovo.id,
+        paymentMethod: paymentMethod ?? null,
+        paymentRecoveryLockId: null,
+        paymentRecoveryLockExpiresAt: null,
+        },
+    });
+
+    if (atualizado.count !== 1) {
+      throw new Error(
+        "Não foi possível vincular a nova cobrança ao pedido."
+      );
+    }
+
+    return respostaJson({
+    status: "recoverable",
+    paymentIntentId: pagamentoNovo.id,
+    clientSecret: pagamentoNovo.client_secret,
+    paymentMethod: paymentMethod ?? null,
+    });
+
+  } catch (error) {
+    console.error(
+      "Erro ao preparar recuperação do pagamento:",
+      error
+    );
+
+    return respostaJson(
+      { error: "Não foi possível preparar o pagamento." },
+      500
+    );
+  }
+    finally {
+    if (orderId && lockId) {
+      await prisma.order.updateMany({
+        where: {
+          id: orderId,
+          paymentRecoveryLockId: lockId,
+        },
+        data: {
+          paymentRecoveryLockId: null,
+          paymentRecoveryLockExpiresAt: null,
+        },
+      });
+    }
+  }
+}
