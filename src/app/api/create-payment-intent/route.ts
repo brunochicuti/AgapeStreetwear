@@ -319,7 +319,7 @@ export async function POST(req: Request) {
           item.quantity <= 0 ||
           item.quantity > 100 ||
           typeof item.size !== "string" ||
-          !["P", "M", "G"].includes(item.size) ||
+          !["PP", "P", "M", "G"].includes(item.size) ||
           (item.color !== undefined &&
             item.color !== null &&
             (typeof item.color !== "string" ||
